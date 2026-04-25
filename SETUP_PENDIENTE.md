@@ -2,6 +2,15 @@
 
 > Cosas que **vos** tenés que hacer / aportar para destrabar la implementación. Cuando un ítem esté listo, marcalo `[x]`.
 
+## Estado actual del repo (auto)
+
+- **Plan 1 (Fundaciones + Auth) ✅ COMPLETO en código** — 17 commits.
+- **Plan 2 (CRUD obras + rubros + usuarios) ✅ COMPLETO en código** — 10 commits.
+- **Total**: 27 commits locales · `pnpm tsc --noEmit` ✅ sin errores · `pnpm test:unit` ✅ 9/9 (precisión decimal + generador `M-YYYY-NNN`) · 4 archivos de tests de integración escritos pero **no ejecutados** (esperan DB real).
+- **Plan 3 (Editor presupuesto)**, **Plan 4 (Vista cliente + PDF)**, **Plan 5 (Importador + auditoría + export)** — todavía no empezados.
+
+> **Recomendación**: antes de seguir con Plan 3 (que es el más grande y más interactivo — editor de presupuesto con virtualización, autosave, concurrencia optimista), conviene resolver los pasos 1 y 2 de abajo y validar Plan 1+2 con DB real corriendo `pnpm dev`. Si todo anda, retomamos Plan 3-5.
+
 ---
 
 ## 1. Proyecto Supabase (BLOQUEA: Plan 1 · Task 7, 17 · y todo Plan 2+)

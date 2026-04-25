@@ -1,0 +1,62 @@
+ ✅ Plan 1 — Fundaciones + Auth (17 commits)                                                                                                                                                   
+                                                                     
+  - Bootstrap Next.js 16 + TypeScript + Tailwind + shadcn/ui (10 primitives)                                                                                                                    
+  - Schema Drizzle completo (12 tablas: usuario, obra, rubro, presupuesto, item, audit + 3 stubs F2)                                                                                            
+  - Migración inicial SQL generada + trigger Postgres "escrito en piedra"
+  - Drizzle client singleton, decimal.js wrappers (5 tests precisión ✅)                                                                                                                        
+  - Supabase clients (server/browser/admin) + middleware de sesión + helpers requireRole                                                                                                        
+  - Login page con email/password + Google + Apple + OAuth callback  
+  - Layout interno con sidebar + sign-out                                                                                                                                                       
+  - Seed script (rubros + primer admin) — sin ejecutar                             
+  - CI workflow (lint + unit + typecheck + build)                                                                                                                                               
+                                                                                   
+  ✅ Plan 2 — CRUD obras + rubros + usuarios (10 commits)                                                                                                                                       
+                                                                                                                                                                                                
+  - AuditLog helper con diff JSON                                                                                                                                                               
+  - Generador M-YYYY-NNN (4 tests ✅)                                                                                                                                                           
+  - Obras: schema Zod + queries + Server Actions (CRUD + soft delete + regenerar token + audit) + 3 componentes UI + 4 páginas + tests integración (escritos)                                   
+  - Rubros: vertical slice completo con árbol jerárquico editable                                                                                                                               
+  - Usuarios: vertical slice incluyendo invitar via Supabase Auth admin API                                                                                                                     
+  - CI: job de integration tests (gateado por vars.RUN_INTEGRATION)                                                                                                                             
+                                                                                                                                                                                                
+  Estado del repo                                                                  
+                                                                                                                                                                                                
+  - 27 commits limpios · tsc --noEmit zero errores · test:unit 9/9 ✅              
+
+  - AuditLog helper con diff JSON
+  - Generador M-YYYY-NNN (4 tests ✅)
+  - Obras: schema Zod + queries + Server Actions (CRUD + soft delete + regenerar token + audit) + 3 componentes UI + 4 páginas + tests integración (escritos)
+  - Rubros: vertical slice completo con árbol jerárquico editable
+  - Usuarios: vertical slice incluyendo invitar via Supabase Auth admin API
+  - CI: job de integration tests (gateado por vars.RUN_INTEGRATION)
+
+  Estado del repo
+
+  - 27 commits limpios · tsc --noEmit zero errores · test:unit 9/9 ✅
+  - 4 archivos de tests de integración listos, no corridos (esperan DB)
+  - SETUP_PENDIENTE.md actualizado con el estado y los pasos para destrabar
+  - Memoria persistente guardada con contexto del proyecto + gotchas del stack
+
+  Pendiente (Plans 3-5 + bloqueados)
+
+  - Plan 3 (Editor presupuesto, ~1630 líneas): el más complejo — react-hook-form + virtualización + snapshots + concurrencia optimista. Recomiendo validar P1+P2 con DB real antes de empezarlo.
+  - Plan 4 (PDF + vista cliente)
+  - Plan 5 (Importador + auditoría UI + export — bloqueado parcialmente por el CSV real de Sheets)
+  - Bloqueado ahora: pnpm db:migrate, pnpm db:seed, git push (créds Supabase + repo GitHub — pasos 1, 2, 4 del SETUP_PENDIENTE.md)
+
+  ¿Cómo seguimos? Tres opciones:
+  1. Validar antes de seguir: cargás creds Supabase + creás repo GitHub → corremos migrate/seed/dev y verificamos que Plan 1+2 anda bien → seguimos con Plan 3.
+  2. Empujar Plan 3 ya sin validar P1+P2 (más rápido pero se acumulan riesgos si hay bugs en lo escrito).
+  3. Pausar acá y retomar otro día con creds.
+
+  Mi voto es la 1 — el editor de Plan 3 es lo suficientemente delicado para querer base sólida primero.
+
+✻ Sautéed for 40m 7s
+
+  12 tasks (8 done, 4 open)
+  ◻ P1 BLOQUEADO: db:migrate + seed (Task 7 db:migrate, Task 17 seed)
+  ◻ Plan 3 — Editor de presupuesto
+  ◻ Plan 4 — Vista cliente + PDF
+  ◻ Plan 5 — Importador + auditoría + export XLSX
+  ✔ P1-batch1: Bootstrap Next.js + shadcn + env + deps (Tasks 1-4)
+   … +7 completed
