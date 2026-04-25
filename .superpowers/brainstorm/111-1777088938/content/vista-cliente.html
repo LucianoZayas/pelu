@@ -1,0 +1,106 @@
+<h2>Vista Cliente — ¿Cómo se ve la página pública?</h2>
+<p class="subtitle">Lo que ve el cliente al abrir el link mágico. Sin costos ni markup. Solo precios finales.</p>
+
+<style>
+.doc { background: #fafafa; color: #222; padding: 14px; border-radius: 4px; font-size: 11px; font-family: Georgia, serif; }
+.doc h4 { margin: 0 0 8px 0; color: #111; }
+.doc .head { display: flex; justify-content: space-between; border-bottom: 2px solid #222; padding-bottom: 6px; margin-bottom: 10px; }
+.doc table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10px; }
+.doc th, .doc td { border-bottom: 1px solid #ddd; padding: 3px 4px; text-align: left; }
+.doc th { border-bottom: 1px solid #222; }
+.doc .num { text-align: right; font-variant-numeric: tabular-nums; }
+.doc .rubro-h { background: #eaeaea; font-weight: bold; padding: 4px; margin-top: 6px; }
+.doc .rubro-t { font-weight: bold; padding: 3px 4px; background: #f5f5f5; }
+.doc .total { background: #222; color: #fff; padding: 6px 8px; text-align: right; font-size: 13px; margin-top: 8px; font-weight: bold; }
+
+.card-doc { background: #fafafa; color: #222; padding: 10px; border-radius: 4px; font-size: 10px; }
+.card-doc .card-rubro { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin-bottom: 6px; }
+.card-doc .card-rubro-head { display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 4px; color: #1a3a5a; }
+.card-doc table { width: 100%; font-size: 9px; }
+.card-doc table td { padding: 2px 3px; }
+</style>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A — Documento formal (1 sola tabla agrupada)</div>
+        <div class="mockup-body">
+          <div class="doc">
+            <div class="head">
+              <div>
+                <h4>Presupuesto M-2026-001</h4>
+                <div>Obra: Refacción Casa Vargas</div>
+                <div>Cliente: Sr. Juan Vargas</div>
+              </div>
+              <div style="text-align:right">
+                <div><strong>MACNA</strong></div>
+                <div>Emitido 15-Mar-2026</div>
+                <div>Cotización ref: $1.000/USD</div>
+              </div>
+            </div>
+            <div class="rubro-h">Demoliciones</div>
+            <table>
+              <tr><th>Descripción</th><th class="num">Cant</th><th>Un</th><th class="num">P. unit</th><th class="num">Subtotal</th></tr>
+              <tr><td>Muro Norte</td><td class="num">25</td><td>m²</td><td class="num">USD 20</td><td class="num">USD 500</td></tr>
+              <tr><td>Piso cocina</td><td class="num">12</td><td>m²</td><td class="num">USD 13</td><td class="num">USD 162</td></tr>
+            </table>
+            <div class="rubro-t" style="text-align:right">Subtotal Demoliciones: USD 662</div>
+            <div class="rubro-h">Albañilería</div>
+            <table>
+              <tr><td>Tabique nuevo</td><td class="num">18</td><td>m²</td><td class="num">USD 63</td><td class="num">USD 1.134</td></tr>
+            </table>
+            <div class="rubro-t" style="text-align:right">Subtotal Albañilería: USD 1.134</div>
+            <div class="total">TOTAL: USD 2.836</div>
+            <div style="margin-top:10px;font-size:10px;color:#666">Botón: Descargar PDF firmado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Documento formal</h3>
+      <p>Estilo "presupuesto impreso" en versión web. Datos del encabezado, rubros como secciones con sus ítems debajo, subtotal por rubro y total destacado. Botón para bajar el PDF firmado. <strong>Lo más cercano a lo que un cliente espera ver.</strong> Punto débil: con muchos rubros se hace largo el scroll.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B — Cards por rubro</div>
+        <div class="mockup-body">
+          <div class="card-doc">
+            <div style="display:flex;justify-content:space-between;border-bottom:2px solid #222;padding-bottom:4px;margin-bottom:8px">
+              <div><strong>Refacción Casa Vargas</strong><br><span style="font-size:9px">Presupuesto M-2026-001 · 15-Mar-2026</span></div>
+              <div style="text-align:right"><strong>MACNA</strong></div>
+            </div>
+            <div class="card-rubro">
+              <div class="card-rubro-head"><span>Demoliciones</span><span>USD 662</span></div>
+              <table>
+                <tr><td>Muro Norte (25 m²)</td><td class="num">USD 500</td></tr>
+                <tr><td>Piso cocina (12 m²)</td><td class="num">USD 162</td></tr>
+              </table>
+            </div>
+            <div class="card-rubro">
+              <div class="card-rubro-head"><span>Albañilería</span><span>USD 1.134</span></div>
+              <table>
+                <tr><td>Tabique nuevo (18 m²)</td><td class="num">USD 1.134</td></tr>
+              </table>
+            </div>
+            <div class="card-rubro">
+              <div class="card-rubro-head"><span>Sanitarios</span><span>USD 1.040</span></div>
+            </div>
+            <div style="background:#222;color:#fff;padding:8px;text-align:right;font-weight:bold;border-radius:4px">TOTAL: USD 2.836</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Cards por rubro</h3>
+      <p>Cada rubro es una card con su total destacado. Ítems compactos en una línea (descripción + cantidad como contexto). <strong>Más moderno y visual.</strong> Buen formato si en Fase 2 sumamos foto/avance por rubro. Punto débil: menos "documento serio" para clientes formales.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="label">Hacé click o respondeme en terminal.</p>

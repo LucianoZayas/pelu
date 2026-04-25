@@ -1,0 +1,112 @@
+<h2>Editor de Presupuesto — ¿Qué layout te cierra más?</h2>
+<p class="subtitle">Vista Interna (Admin). Mismo dato, tres formas de organizarlo.</p>
+
+<style>
+.mini { font-size: 11px; }
+.mini table { width: 100%; border-collapse: collapse; }
+.mini th, .mini td { border: 1px solid #444; padding: 3px 5px; text-align: left; }
+.mini th { background: #2a2a2a; font-weight: 600; }
+.mini .num { text-align: right; font-variant-numeric: tabular-nums; }
+.mini .rubro-header { background: #1a3a5a; font-weight: 600; padding: 4px 6px; }
+.mini .rubro-total { background: #1a2a3a; font-weight: 600; }
+.mini .sidebar { width: 30%; float: left; background: #1a1a1a; padding: 6px; }
+.mini .sidebar-item { padding: 4px 6px; border-radius: 3px; margin-bottom: 2px; }
+.mini .sidebar-item.active { background: #2a4a6a; }
+.mini .main { width: 68%; float: right; }
+.mini .clear { clear: both; }
+.mini .acc { border: 1px solid #444; margin-bottom: 4px; }
+.mini .acc-header { background: #2a3a4a; padding: 4px 6px; cursor: pointer; display: flex; justify-content: space-between; }
+.mini .total-row { background: #0a3a0a; font-weight: 700; }
+</style>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A — Tabla plana</div>
+        <div class="mockup-body mini">
+          <table>
+            <tr>
+              <th>Rubro</th><th>Descripción</th><th class="num">Cant</th><th>Un</th><th class="num">Costo U.</th><th class="num">Markup</th><th class="num">Precio U.</th><th class="num">Subtotal</th>
+            </tr>
+            <tr><td>Demoliciones</td><td>Muro Norte</td><td class="num">25</td><td>m²</td><td class="num">$15</td><td class="num">35%</td><td class="num">$20</td><td class="num">$500</td></tr>
+            <tr><td>Demoliciones</td><td>Piso cocina</td><td class="num">12</td><td>m²</td><td class="num">$10</td><td class="num">35%</td><td class="num">$13</td><td class="num">$162</td></tr>
+            <tr><td>Albañilería</td><td>Tabique nuevo</td><td class="num">18</td><td>m²</td><td class="num">$45</td><td class="num">40%</td><td class="num">$63</td><td class="num">$1.134</td></tr>
+            <tr><td>Sanitarios</td><td>Cañería baño</td><td class="num">1</td><td>gl</td><td class="num">$800</td><td class="num">30%</td><td class="num">$1.040</td><td class="num">$1.040</td></tr>
+            <tr class="total-row"><td colspan="7">TOTAL CLIENTE</td><td class="num">$2.836</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Tabla plana</h3>
+      <p>Todos los ítems en una sola tabla. La columna "Rubro" repite el valor. Filtrable y ordenable por cualquier columna. <strong>Familiar para quien viene de Excel.</strong> Punto débil: con 80+ ítems se vuelve un mar de filas, totales por rubro requieren scroll mental.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B — Acordeón por rubro</div>
+        <div class="mockup-body mini">
+          <div class="acc">
+            <div class="acc-header">▼ Demoliciones <span>$662</span></div>
+            <table>
+              <tr><th>Descripción</th><th class="num">Cant</th><th>Un</th><th class="num">Costo U.</th><th class="num">Markup</th><th class="num">Precio U.</th><th class="num">Subtotal</th></tr>
+              <tr><td>Muro Norte</td><td class="num">25</td><td>m²</td><td class="num">$15</td><td class="num">35%</td><td class="num">$20</td><td class="num">$500</td></tr>
+              <tr><td>Piso cocina</td><td class="num">12</td><td>m²</td><td class="num">$10</td><td class="num">35%</td><td class="num">$13</td><td class="num">$162</td></tr>
+            </table>
+          </div>
+          <div class="acc">
+            <div class="acc-header">▶ Albañilería <span>$1.134</span></div>
+          </div>
+          <div class="acc">
+            <div class="acc-header">▶ Sanitarios <span>$1.040</span></div>
+          </div>
+          <div class="acc">
+            <div class="acc-header">▶ Instalación de Gas <span>—</span></div>
+          </div>
+          <div style="background:#0a3a0a;padding:4px 6px;font-weight:700;text-align:right">TOTAL CLIENTE: $2.836</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Acordeón por rubro</h3>
+      <p>Cada rubro es una sección colapsable con su total visible. Abrís solo en el que estás trabajando. <strong>Refleja el cómputo y presupuesto real de obra.</strong> Escala bien a muchos rubros. Punto débil: para edición masiva (cambiar markup global) es un poquito más click-heavy.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C — Sidebar de rubros + tabla</div>
+        <div class="mockup-body mini">
+          <div class="sidebar">
+            <div class="sidebar-item active">Demoliciones <span style="float:right">$662</span></div>
+            <div class="sidebar-item">Albañilería <span style="float:right">$1.134</span></div>
+            <div class="sidebar-item">Sanitarios <span style="float:right">$1.040</span></div>
+            <div class="sidebar-item">Inst. Gas <span style="float:right">—</span></div>
+            <div class="sidebar-item">+ Inst. Eléctrica</div>
+            <div style="margin-top:6px;padding:4px 6px;background:#0a3a0a;font-weight:700">Total: $2.836</div>
+          </div>
+          <div class="main">
+            <table>
+              <tr><th>Descripción</th><th class="num">Cant</th><th>Un</th><th class="num">Costo</th><th class="num">Mk</th><th class="num">Precio</th><th class="num">Sub</th></tr>
+              <tr><td>Muro Norte</td><td class="num">25</td><td>m²</td><td class="num">$15</td><td class="num">35%</td><td class="num">$20</td><td class="num">$500</td></tr>
+              <tr><td>Piso cocina</td><td class="num">12</td><td>m²</td><td class="num">$10</td><td class="num">35%</td><td class="num">$13</td><td class="num">$162</td></tr>
+            </table>
+          </div>
+          <div class="clear"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Sidebar + tabla</h3>
+      <p>Lista de rubros a la izquierda con totales, tabla del rubro seleccionado a la derecha. <strong>Como una IDE</strong> — máximo foco en un rubro a la vez. Punto débil: necesita más ancho de pantalla; en notebook chico aprieta. Edición global de markup tiene que vivir en otra pantalla.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="label">Hacé click en una opción para seleccionar, o decime en la terminal cuál preferís.</p>
