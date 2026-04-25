@@ -8,6 +8,13 @@
       "when": 1777094681507,
       "tag": "0000_aberrant_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777094690000,
+      "tag": "0001_escrito_en_piedra",
+      "breakpoints": true
     }
   ]
 }
