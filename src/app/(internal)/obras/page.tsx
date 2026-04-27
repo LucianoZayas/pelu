@@ -11,9 +11,12 @@ export default async function ObrasPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Obras</h1>
-        {user.rol === 'admin' && (
-          <Link href="/obras/nueva" className={buttonVariants()}>Nueva obra</Link>
-        )}
+        <div className="flex gap-2">
+          <a href="/api/export/obras" className={buttonVariants({ variant: 'outline' })}>Exportar XLSX</a>
+          {user.rol === 'admin' && (
+            <Link href="/obras/nueva" className={buttonVariants()}>Nueva obra</Link>
+          )}
+        </div>
       </div>
       <ObrasTable obras={obras} />
     </div>

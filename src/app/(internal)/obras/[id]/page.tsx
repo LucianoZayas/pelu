@@ -19,6 +19,7 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
     <div>
       <ObraSummary obra={obra} />
       <div className="flex gap-2 mb-6">
+        <a href={`/api/export/obras/${id}`} className={buttonVariants({ variant: 'outline' })}>Exportar XLSX</a>
         {user.rol === 'admin' && (
           <>
             <Link href={`/obras/${id}/editar`} className={buttonVariants()}>Editar</Link>
