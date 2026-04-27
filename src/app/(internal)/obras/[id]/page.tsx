@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { requireSession } from '@/lib/auth/require';
 import { getObra } from '@/features/obras/queries';
 import { ObraSummary } from '@/features/obras/components/obra-summary';
+import { listarPresupuestosDeObra } from '@/features/presupuestos/queries';
 
 export default async function ObraDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,6 +12,7 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
   const obra = await getObra(id);
   if (!obra) notFound();
   const previewUrl = `/cliente/${obra.clienteToken}`;
+  const presupuestos = await listarPresupuestosDeObra(id);
 
   return (
     <div>
@@ -26,7 +28,20 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
       </div>
       <section className="border rounded p-4">
         <h2 className="font-semibold mb-2">Presupuestos</h2>
-        <p className="text-muted-foreground text-sm">(Lista de presupuestos llega en Plan 3.)</p>
+        {presupuestos.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No hay presupuestos. Creá el original.</p>
+        ) : (
+          <ul className="space-y-1">
+            {presupuestos.map((p) => (
+              <li key={p.id}>
+                <Link href={`/obras/${id}/presupuestos/${p.id}`} className="hover:underline">
+                  #{p.numero} · {p.tipo} · <span className="text-xs">{p.estado}</span>
+                  {p.descripcion ? ` · ${p.descripcion}` : ''}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
