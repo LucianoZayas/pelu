@@ -17,6 +17,7 @@
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
     "db:seed": "dotenv -e .env.local -- tsx src/db/seed.ts",
+    "import-sheets": "dotenv -e .env.local -- tsx scripts/import-sheets/index.ts",
     "vercel-build": "drizzle-kit migrate && next build"
   },
   "dependencies": {
