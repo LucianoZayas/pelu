@@ -1,0 +1,4 @@
+rubro,descripcion,unidad,cantidad,costo_unitario,moneda_costo,markup,notas
+Demoliciones,Demolición de muro existente,m2,20,15.00,USD,,
+Albañilería,Mampostería 0.30 m,m2,40,35.00,USD,30,
+Instalaciones / Eléctrica,Tablero principal,gl,1,800,USD,25,Incluye térmicas
