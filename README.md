@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Macna — Sistema de Gestión de Obras
 
-## Getting Started
+## Setup
 
-First, run the development server:
+1. Crear proyectos Supabase (`prod`, `dev`).
+2. `cp .env.example .env.local` y completar.
+3. `pnpm install`
+4. `pnpm db:migrate` (aplica schema)
+5. `pnpm db:seed` (rubros + primer admin)
+6. `pnpm dev`
+
+## Importador de Sheets
+
+Convertir la planilla actual a CSV con columnas: `rubro,descripcion,unidad,cantidad,costo_unitario,moneda_costo,markup,notas`.
+
+Ejemplo:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Validar sin escribir
+pnpm import-sheets ./mi-obra.csv --codigo-obra M-2026-005 --cotizacion 1200 --dry-run
+
+# Importar
+pnpm import-sheets ./mi-obra.csv --codigo-obra M-2026-005 --cotizacion 1200 --markup 30 \
+  --nombre-obra "Casa Pérez" --cliente-nombre "Juan Pérez"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Notas:
+- `unidad` ∈ {m2, m3, hs, gl, u, ml, kg}
+- `moneda_costo` ∈ {USD, ARS}
+- `markup` opcional (vacío = usa default del presupuesto)
+- Idempotente: aborta si `codigo-obra` ya existe.
+- Rubros nuevos se crean con flag `creado_por_importador=true` para revisión posterior.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `pnpm test:unit` — services, parsers, validators
+- `pnpm test:integration` — DB + Server Actions (requiere Supabase test)
+- `pnpm test:e2e` — Playwright (requiere app levantada + seed)
