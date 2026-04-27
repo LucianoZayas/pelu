@@ -24,8 +24,8 @@ describe('currency.convertirAMonedaBase', () => {
   });
 
   it('preserva precisión en conversiones grandes', () => {
-    // 1234.5678 USD * 1234.5678 = 1524155.6585...
+    // 1234.5678 USD * 1234.5678 = 1524157.65279684
     const r = convertirAMonedaBase(D('1234.5678'), 'USD', 'ARS', D('1234.5678'));
-    expect(r.toFixed(4)).toBe('1524155.6586');
+    expect(r.toFixed(4)).toBe('1524157.6528');
   });
 });
