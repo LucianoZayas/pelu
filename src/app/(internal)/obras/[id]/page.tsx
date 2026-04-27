@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { requireSession } from '@/lib/auth/require';
 import { getObra } from '@/features/obras/queries';
 import { ObraSummary } from '@/features/obras/components/obra-summary';
+import { RegenerarTokenButton } from '@/features/obras/components/regenerar-token-button';
 import { listarPresupuestosDeObra } from '@/features/presupuestos/queries';
 
 export default async function ObraDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +23,7 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
           <>
             <Link href={`/obras/${id}/editar`} className={buttonVariants()}>Editar</Link>
             <Link href={`/obras/${id}/presupuestos/nuevo`} className={buttonVariants({ variant: 'outline' })}>Nuevo presupuesto</Link>
+            <RegenerarTokenButton obraId={obra.id} currentToken={obra.clienteToken} />
             <a href={previewUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: 'outline' })}>Previsualizar como cliente</a>
           </>
         )}
