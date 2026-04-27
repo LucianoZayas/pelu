@@ -9,9 +9,11 @@ export function AuditoriaFiltros() {
   const router = useRouter();
   const sp = useSearchParams();
 
+  const ALL = '__all__';
+
   function update(key: string, val: string | null) {
     const next = new URLSearchParams(sp);
-    if (val) next.set(key, val); else next.delete(key);
+    if (val && val !== ALL) next.set(key, val); else next.delete(key);
     router.push(`?${next.toString()}`);
   }
 
@@ -19,10 +21,10 @@ export function AuditoriaFiltros() {
     <div className="flex gap-3 items-end mb-4">
       <div>
         <Label>Entidad</Label>
-        <Select value={sp.get('entidad') ?? ''} onValueChange={(v) => update('entidad', v)}>
+        <Select value={sp.get('entidad') ?? ALL} onValueChange={(v) => update('entidad', v)}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Todas" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas</SelectItem>
+            <SelectItem value={ALL}>Todas</SelectItem>
             <SelectItem value="obra">Obra</SelectItem>
             <SelectItem value="presupuesto">Presupuesto</SelectItem>
             <SelectItem value="usuario">Usuario</SelectItem>
@@ -33,10 +35,10 @@ export function AuditoriaFiltros() {
       </div>
       <div>
         <Label>Acción</Label>
-        <Select value={sp.get('accion') ?? ''} onValueChange={(v) => update('accion', v)}>
+        <Select value={sp.get('accion') ?? ALL} onValueChange={(v) => update('accion', v)}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Todas" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas</SelectItem>
+            <SelectItem value={ALL}>Todas</SelectItem>
             <SelectItem value="crear">Crear</SelectItem>
             <SelectItem value="editar">Editar</SelectItem>
             <SelectItem value="firmar">Firmar</SelectItem>
