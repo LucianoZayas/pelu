@@ -578,6 +578,31 @@ No permitir confirmar import si hay algún error. Descartado: frustra al usuario
 
 Mi propuesta inicial. Descartada por el usuario: violación directa del principio "UX > implementation cost".
 
+### 11.6 `import_metadata` schema — flat con strings JSON encoded (descartada en Task 11)
+
+3 sub-agentes propusieron schemas alternativos para `presupuesto.import_metadata`. La opción **flat** mete las arrays de descartes/warnings como string JSON-encoded (`descartesJson: string`, `warningsJson: string`) junto a 8 keys scalar planos (11 keys totales, ~13 KB).
+
+**Drawbacks que la descartaron**:
+- **Acceso opaco a datos anidados**: el banner que expande descartes tiene que `JSON.parse(descartesJson)` en cada expansión. Memoization mitiga pero introduce complejidad sin upside.
+- **Type-safety vulnerada**: TypeScript no enforces el shape de un string JSON-encoded. Un futuro contributor podría meter un JSON con shape distinto y nadie se daría cuenta hasta runtime.
+- **Forensics SQL bloqueada**: queries como "imports con > 5 warnings de tipo X" requieren parsear strings en application code; no se puede usar operadores jsonb nativos (`->`, `->>`, `jsonb_array_elements`).
+- **Lo peor de ambos mundos**: el nombre "flat" sugiere acceso directo, pero los datos importantes (descartes/warnings) viven detrás de un string opaco.
+
+**Cuándo revisar**: si en el futuro Postgres queries sobre el contenido de `import_metadata` se vuelven raras (todo lo importante se accede via la app), y el JSON parse overhead se vuelve medible, esta opción podría ser viable como "metadata-as-blob".
+
+### 11.7 `import_metadata` schema — minimal sólo counts (descartada en Task 11)
+
+3 sub-agentes propusieron schemas alternativos. La opción **minimal** persiste sólo 5 scalars (`archivoNombre`, `hojaParseada`, `itemsCount`, `warningsCount`, `descartesCount`) y delega la lista completa de descartes al `audit_log.diff` y los warnings per-item a `item_presupuesto.notas` con prefix `[import]`. ~150 bytes.
+
+**Drawbacks que la descartaron**:
+- **Pierde la UX del banner expandible** (validada por el usuario en el mockup `/preview-importer`): no hay lista de descartes para expandir, solo un count + link al audit log. Bajar UX para ganar ~12 KB no se justifica.
+- **Forensics requiere join con `audit_log`**: para responder "qué filas fueron descartadas en este presupuesto" hay dos lecturas. En la opción nested elegida es un sólo read del jsonb.
+- **`warningsCount` puede quedar stale**: si alguien edita las `notas` de items y remueve el prefix `[import]`, el contador queda mintiendo y nadie se entera.
+- **Audit log como single-source-of-truth para descartes**: si el audit log se trunca o un retention policy lo borra, perdemos visibility a los descartes para siempre.
+- **`confirmar-import` action necesitaría query extra** para reconstruir descripción del audit log con detalle de warnings (qué tipos predominan, etc.).
+
+**Cuándo revisar**: si los costs de jsonb storage se vuelven preocupantes (e.g., 10k presupuestos × ~15 KB = 150 MB sólo en `import_metadata`), o si el banner expandible cambia su UX para ya no mostrar la lista (e.g., siempre va a una pantalla dedicada de auditoría), entonces minimal vuelve a ser viable.
+
 ---
 
 ## 12. Anexos
