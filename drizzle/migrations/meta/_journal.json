@@ -15,6 +15,13 @@
       "when": 1777094690000,
       "tag": "0001_escrito_en_piedra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778623970498,
+      "tag": "0002_importer_xlsx",
+      "breakpoints": true
     }
   ]
 }

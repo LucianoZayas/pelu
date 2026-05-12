@@ -1,7 +1,7 @@
 import {
-  pgTable, uuid, text, timestamp, boolean, integer, decimal, jsonb, pgEnum, uniqueIndex,
+  pgTable, uuid, text, timestamp, boolean, integer, decimal, jsonb, pgEnum, uniqueIndex, index,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 export const rolEnum = pgEnum('rol', ['admin', 'operador']);
 export const monedaEnum = pgEnum('moneda', ['USD', 'ARS']);
@@ -78,6 +78,9 @@ export const presupuesto = pgTable('presupuesto', {
   cotizacionUsd: decimal('cotizacion_usd', { precision: 18, scale: 4 }).notNull(),
   templateVersion: integer('template_version').notNull().default(1),
   version: integer('version').notNull().default(1),
+  importPendiente: boolean('import_pendiente').notNull().default(false),
+  importMetadata: jsonb('import_metadata'),
+  reemplazadoPorImportId: uuid('reemplazado_por_import_id'),
   totalClienteCalculado: decimal('total_cliente_calculado', { precision: 18, scale: 4 }),
   totalCostoCalculado: decimal('total_costo_calculado', { precision: 18, scale: 4 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -87,6 +90,7 @@ export const presupuesto = pgTable('presupuesto', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (t) => ({
   obraNumeroIdx: uniqueIndex('presupuesto_obra_numero_idx').on(t.obraId, t.numero),
+  importPendienteIdx: index('presupuesto_import_pendiente_idx').on(t.importPendiente).where(sql`import_pendiente = true`),
 }));
 
 export const itemPresupuesto = pgTable('item_presupuesto', {
@@ -104,6 +108,7 @@ export const itemPresupuesto = pgTable('item_presupuesto', {
   markupEfectivoPorcentaje: decimal('markup_efectivo_porcentaje', { precision: 6, scale: 2 }).notNull(),
   precioUnitarioCliente: decimal('precio_unitario_cliente', { precision: 18, scale: 4 }).notNull(),
   notas: text('notas'),
+  ubicacion: text('ubicacion'),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
