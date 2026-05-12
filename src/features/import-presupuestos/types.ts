@@ -1,4 +1,4 @@
-import type { ItemPreview, DescarteRow } from '@/../scripts/import-sheets/tipos';
+import type { DescarteRow } from '@/../scripts/import-sheets/tipos';
 
 /**
  * Metadata persisted in `presupuesto.import_metadata` (jsonb column).
@@ -37,4 +37,4 @@ export interface ImportMetadata {
   };
 }
 
-export type { ItemPreview };
+export type { ItemPreview, ResultadoParseoXlsx } from '@/../scripts/import-sheets/tipos';
