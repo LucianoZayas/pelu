@@ -1,31 +1,21 @@
-import { parse } from 'csv-parse/sync';
-import type { FilaCsv } from './tipos';
+import { parseCsv } from './parse-csv';
+import { parseXlsx } from './parse-xlsx';
+import type { FilaCsv, ResultadoParseoXlsx } from './tipos';
 
-const COLUMNAS_REQUERIDAS = ['rubro', 'descripcion', 'unidad', 'cantidad', 'costo_unitario', 'moneda_costo', 'markup', 'notas'] as const;
+export type ParsedFile =
+  | { kind: 'csv'; filas: FilaCsv[] }
+  | { kind: 'xlsx'; result: ResultadoParseoXlsx };
 
-export async function parseCsv(buf: Buffer): Promise<FilaCsv[]> {
-  const records = parse(buf, {
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-  }) as Record<string, string>[];
-  if (records.length === 0) return [];
-
-  const cols = Object.keys(records[0]);
-  for (const req of COLUMNAS_REQUERIDAS) {
-    if (!cols.includes(req)) {
-      throw new Error(`Falta columna obligatoria: ${req}`);
-    }
+export async function parseFile(buf: Buffer, fileName: string): Promise<ParsedFile> {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith('.xlsx')) {
+    return { kind: 'xlsx', result: await parseXlsx(buf, fileName) };
   }
-
-  return records.map((r) => ({
-    rubro: r.rubro,
-    descripcion: r.descripcion,
-    unidad: r.unidad,
-    cantidad: r.cantidad,
-    costo_unitario: r.costo_unitario,
-    moneda_costo: r.moneda_costo,
-    markup: r.markup,
-    notas: r.notas ?? '',
-  }));
+  if (lower.endsWith('.csv')) {
+    return { kind: 'csv', filas: await parseCsv(buf) };
+  }
+  throw new Error(`Extensión no soportada: ${fileName}. Usar .csv o .xlsx.`);
 }
+
+// Re-export para compatibilidad con código existente
+export { parseCsv } from './parse-csv';
