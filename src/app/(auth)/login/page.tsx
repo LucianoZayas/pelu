@@ -1,5 +1,5 @@
 import { LoginForm } from './login-form';
-import { iniciarSesionGoogle, iniciarSesionApple } from './actions';
+import { iniciarSesionGoogle } from './actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -18,7 +18,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">o</span></div>
           </div>
           <form action={iniciarSesionGoogle}><Button variant="outline" className="w-full">Continuar con Google</Button></form>
-          <form action={iniciarSesionApple}><Button variant="outline" className="w-full">Continuar con Apple</Button></form>
         </CardContent>
       </Card>
     </div>

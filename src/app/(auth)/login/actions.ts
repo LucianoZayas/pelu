@@ -39,15 +39,3 @@ export async function iniciarSesionGoogle(_formData: FormData): Promise<void> {
   }
   redirect(data.url);
 }
-
-export async function iniciarSesionApple(_formData: FormData): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'apple',
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback` },
-  });
-  if (error || !data.url) {
-    redirect('/login?error=oauth');
-  }
-  redirect(data.url);
-}
