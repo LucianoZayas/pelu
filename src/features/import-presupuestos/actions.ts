@@ -2,6 +2,8 @@
 
 import { requireRole } from '@/lib/auth/require';
 import { parseFile } from '@/../scripts/import-sheets/parse';
+import { commitImport, type CommitImportArgs } from '@/../scripts/import-sheets/ejecutor';
+import { revalidatePath } from 'next/cache';
 import type { ItemPreview, ResultadoParseoXlsx } from './types';
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -17,6 +19,26 @@ export type PreviewResult =
       metadata: ResultadoParseoXlsx['metadata'];
     }
   | { ok: false; error: string };
+
+export type CommitImportActionResult =
+  | { ok: true; obraId: string; presupuestoId: string; itemsCreados: number; redirectTo: string }
+  | { ok: false; error: string };
+
+export async function commitImportAction(
+  args: Omit<CommitImportArgs, 'adminId'>,
+): Promise<CommitImportActionResult> {
+  try {
+    const session = await requireRole('admin');
+    const adminId = session.id;
+    const r = await commitImport({ ...args, adminId });
+    const redirectTo = `/obras/${r.obraId}/presupuestos/${r.presupuestoId}`;
+    revalidatePath('/obras');
+    revalidatePath(`/obras/${r.obraId}`);
+    return { ok: true, obraId: r.obraId, presupuestoId: r.presupuestoId, itemsCreados: r.itemsCreados, redirectTo };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error desconocido' };
+  }
+}
 
 export async function parsePreview(form: FormData): Promise<PreviewResult> {
   await requireRole('admin');
