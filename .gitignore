@@ -48,3 +48,6 @@ drizzle/.cache/
 # playwright
 playwright-report/
 test-results/
+
+# git worktrees (isolated implementation workspaces)
+.worktrees/
