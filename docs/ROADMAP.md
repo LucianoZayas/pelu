@@ -61,7 +61,7 @@ Lo que falta para que la primera obra real entre al sistema y arranque el "paral
 - Re-import sobre borrador: reemplazo con snapshot histórico. Sobre firmado: crea adicional.
 - Una fila Excel con material + MO genera **dos** `ItemPresupuesto` (C.2) para preservar el desglose — refactor a campo `mano_obra_costo` en backlog post-piloto (§ 1.x abajo).
 
-**Sub-tarea A · Implementación** [P0, en curso]: armar plan + ejecutar según el spec.
+**Sub-tarea A · Implementación** [P0, en curso]: plan escrito (`docs/superpowers/plans/2026-05-12-plan-importer-xlsx-real.md`). Tareas completadas: 1–12 (fixtures, schema, tipos, parser XLSX, dispatcher, `commitImport`, `import_metadata` types, `parsePreview` server action). Próxima: Task 13 (`commitImport` server action).
 
 **Sub-tarea B · Validar contra el importer** [P0, depende de A]: subir el XLSX real desde la UI, verificar que el total proyectado en preview coincide con lo que reporta Sheets. Diferencias > $0.01 → investigar antes de confirmar.
 
