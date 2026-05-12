@@ -2,7 +2,9 @@
 
 > Cosas que **vos** tenés que hacer / aportar para destrabar la implementación. Cuando un ítem esté listo, marcalo `[x]`.
 
-## Estado actual del repo (al 2026-04-27)
+> **Para roadmap completo post-piloto** (lo que falta para llegar a "producto final"), ver [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Estado actual del repo (al 2026-05-12)
 
 - **Plan 1 (Fundaciones + Auth) ✅ COMPLETO** — código + DB real validada (migrate + seed contra Supabase `macna-dev`).
 - **Plan 2 (CRUD obras + rubros + usuarios) ✅ COMPLETO en código** — falta validación manual de UI con login real.
@@ -28,18 +30,16 @@
 
 ---
 
-## 3. OAuth Google + Apple ⏳ PENDIENTE (opcional)
-
-Si querés el botón "Continuar con Google" funcional desde el día 1:
+## 3. OAuth Google ⏳ PENDIENTE (opcional) · Apple ❌ DESCARTADO
 
 - [ ] **3.1 Google OAuth**
   1. https://console.cloud.google.com → crear proyecto → APIs & Services → Credentials → Create Credentials → OAuth client ID → Web application.
   2. Authorized redirect URIs: `https://eisqtumcbocrrtlhktxl.supabase.co/auth/v1/callback`.
   3. Copiar `Client ID` y `Client secret`.
   4. En Supabase: Authentication → Providers → Google → habilitar y pegar los valores.
-- [ ] **3.2 Apple OAuth** — saltear si no es prioridad ($99/año + Service ID + key).
+- [x] ~~**3.2 Apple OAuth**~~ — **DESCARTADO** (no se justifica $99/año + Service ID + key). Código eliminado el 2026-05-12: `login/page.tsx` y `login/actions.ts` ya no tienen referencias a Apple.
 
-> Si no hacés esto ahora, el botón de Google/Apple va a estar pero va a tirar error. Se puede ocultar o prenderlo después.
+> Si no hacés esto ahora, el botón de Google va a estar pero va a tirar error al clickear. Se puede ocultar o prenderlo después.
 
 ---
 
@@ -51,32 +51,39 @@ Si querés el botón "Continuar con Google" funcional desde el día 1:
 
 ---
 
-## 5. Vercel ⏳ PENDIENTE (necesario para deploy real)
+## 5. Vercel ✅ HECHO (parcial)
 
-- [ ] **5.1 Crear proyecto en Vercel**
-  1. https://vercel.com/new → importar `LucianoZayas/pelu` de GitHub.
-  2. Framework preset: Next.js (autodetectado).
-  3. **NO deployar todavía** — primero cargar env vars (paso 5.2).
-- [ ] **5.2 Pegar todas las variables de env de `.env.local` en Vercel**
-  - Settings → Environment Variables → cargar las mismas de `.env.local` para Production / Preview / Development.
+- [x] **5.1 Proyecto Vercel creado y linkeado a GitHub** — `https://vercel.com/luchos-projects-3af44a2a/macna`. Auto-deploy desde `main` activo.
+- [ ] **5.2 Verificar variables de entorno en Vercel** — confirmar que estén cargadas las mismas de `.env.local` en Production / Preview / Development.
   - **OJO**: `NEXT_PUBLIC_APP_URL` en producción es la URL real (`https://macna-xxx.vercel.app` o tu dominio).
-  - **OJO**: `DIRECT_URL` debe ser el **Session pooler** (puerto 5432, host `aws-1-us-east-1.pooler.supabase.com`) — la "Direct connection" que usa `db.<ref>.supabase.co` es IPv6-only y no funciona desde Vercel.
-- [ ] **5.3 Build command**: `pnpm vercel-build` (corre `drizzle-kit migrate && next build`).
+  - **OJO**: `DIRECT_URL` debe ser el **Session pooler** (puerto 5432, host `aws-1-us-east-1.pooler.supabase.com`) — la "Direct connection" `db.<ref>.supabase.co` es IPv6-only y falla desde Vercel.
+- [ ] **5.3 Confirmar build command** = `pnpm vercel-build` (corre `drizzle-kit migrate && next build`). Ya está en `package.json`.
+- [ ] **5.4 Primer deploy verde** — un build de prueba que pase migraciones contra Supabase prod.
 
 ---
 
-## 6. Planilla representativa de Sheets ⏳ PENDIENTE (BLOQUEA validación final del Plan 5)
+## 6. Planilla representativa de Sheets ⏳ RECIBIDA, parser pendiente
 
-El código del importador está completo y testeado contra fixture sintético (`fixtures/obra-ejemplo.csv`). Para validar contra una obra real:
+Archivo recibido (2026-05-12): `/Users/lzayas/Downloads/MACNA ADMINISTRACION - Lucho (1).xlsx`.
 
-- [ ] **6.1 Compartir 1 obra real exportada a CSV**
-  1. Abrir una obra representativa en Sheets.
-  2. File → Download → Comma-separated values (.csv).
-  3. Pegar el archivo en `docs/superpowers/samples/` (creá la carpeta) y avisame.
-  4. Correr `pnpm import-sheets docs/superpowers/samples/<archivo>.csv --dry-run` para validar el mapeo.
-  5. Si pasa, correr sin `--dry-run` para insertar.
+**Hallazgo**: el archivo es la administración **completa** de Macna (caja, proyecciones, gastos indirectos, P&L por obra), no solo presupuestos. 8 hojas:
+1. `MACNA - FLUJO DE CAJA` — caja general empresa (F2)
+2. `PROYECCIONES` — forecast por obra (F3)
+3. `F.c - LOZANO` — flujo de caja obra Lozano (F2)
+4. `Res - LOZANO` — P&L obra Lozano (F2)
+5. `GASTOS GENERALES INDIRECTOS - P/O` — payroll (F3)
+6. `Copia de FLUJO DE CAJA - JUNCAL` — caja obra Juncal (F2)
+7. **`Copia de JUNCAL 3706` — presupuesto obra Juncal (F1 — único compatible con el importer actual)**
 
-Si las columnas reales tienen otros nombres o estructura, ajustamos el mapeo en `scripts/import-sheets/parse.ts` antes de codear.
+Las primeras 6 hojas son funcionalidad fuera del alcance de F1 — ver `docs/ROADMAP.md` § 2 para roadmap completo.
+
+- [ ] **6.1 Adaptar el parser a la estructura real de `Copia de JUNCAL 3706`**
+  - Columnas reales: `RUBRO | UBICACIÓN | DETALLE | COSTO PARCIAL | COSTO TOTAL | MANO OBRA PARCIAL | ...`
+  - Columnas esperadas por el importer: `rubro, descripcion, unidad, cantidad, costo_unitario, moneda_costo, markup, notas`
+  - **Decisión pendiente** (necesita brainstorming): (a) extender parser a XLSX + mapeo flexible, (b) preparar CSV "limpio", o (c) script auxiliar de transformación.
+- [ ] **6.2 Validar `--dry-run` contra la obra real**
+  - Correr el importer y comparar total con lo que da Sheets. Diferencias > $0.01 → investigar.
+- [ ] **6.3 Decidir cómo manejar la columna "UBICACIÓN"** — no existe en el modelo actual. Brainstorming: ¿campo nuevo en `ItemPresupuesto` o se diluye en `descripcion`? Afecta reportes futuros.
 
 ---
 
@@ -116,7 +123,13 @@ Los implementers no pueden clickear UI, así que estas verificaciones siguen sin
 | Pendiente | Desbloquea |
 |---|---|
 | 3.1 (Google OAuth) | Botón "Continuar con Google" funcional |
-| 5.x (Vercel) | Deploy a un entorno real |
-| 6.1 (CSV de Sheets) | Validación end-to-end del importador con datos reales |
+| 5.2–5.4 (Vercel env + deploy) | Primer deploy verde en producción |
+| 6.1–6.3 (parser XLSX + mapeo) | Importar obra real y arrancar piloto |
 | 8 (integration test harness) | Correr `pnpm test:integration` y la job de CI |
 | 9.x (manual smoke) | Confianza en que la cadena completa anda |
+
+---
+
+## Post-piloto
+
+Cuando se cierre todo lo de arriba y el piloto esté operando en paralelo con Sheets, el siguiente paso es trabajar el backlog de "producto final" — ver [`docs/ROADMAP.md`](docs/ROADMAP.md).
