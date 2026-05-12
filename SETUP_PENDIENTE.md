@@ -54,9 +54,20 @@
 ## 5. Vercel ✅ HECHO (parcial)
 
 - [x] **5.1 Proyecto Vercel creado y linkeado a GitHub** — `https://vercel.com/luchos-projects-3af44a2a/macna`. Auto-deploy desde `main` activo.
-- [ ] **5.2 Verificar variables de entorno en Vercel** — confirmar que estén cargadas las mismas de `.env.local` en Production / Preview / Development.
-  - **OJO**: `NEXT_PUBLIC_APP_URL` en producción es la URL real (`https://macna-xxx.vercel.app` o tu dominio).
-  - **OJO**: `DIRECT_URL` debe ser el **Session pooler** (puerto 5432, host `aws-1-us-east-1.pooler.supabase.com`) — la "Direct connection" `db.<ref>.supabase.co` es IPv6-only y falla desde Vercel.
+- [ ] **5.2 Verificar variables de entorno en Vercel** — Settings → Environment Variables. Cargar para los 3 entornos (Production / Preview / Development), copiando valores desde `.env.local`:
+
+  | Variable | Qué es | Notas para Vercel |
+  |---|---|---|
+  | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase | Mismo valor en los 3 entornos (`https://eisqtumcbocrrtlhktxl.supabase.co`) |
+  | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key (JWT) | Mismo valor en los 3 entornos |
+  | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (JWT) | Mismo valor en los 3 entornos. **Sensitive — marcar como secret.** |
+  | `DATABASE_URL` | Pooler de transacciones (puerto 6543) | Para queries normales de la app. Mismo valor en los 3. |
+  | `DIRECT_URL` | **Session pooler** (puerto 5432) | Para `drizzle-kit migrate`. **OJO**: NO usar `db.<ref>.supabase.co` (IPv6-only, falla desde Vercel). Sí usar `aws-1-us-east-1.pooler.supabase.com:5432`. |
+  | `NEXT_PUBLIC_APP_URL` | URL pública de la app | **Distinto por entorno**: en Production = URL real (`https://macna-xxx.vercel.app` o tu dominio). En Preview = `https://$VERCEL_URL` con prefix `https://`. En Development = `http://localhost:3000`. |
+  | `SEED_ADMIN_EMAIL` | Email del primer admin | Solo necesario si vas a correr `pnpm db:seed` contra la DB de prod (no se hace en Vercel build, por ahora opcional cargarlo). |
+  | `SEED_ADMIN_PASSWORD` | Password inicial | Idem. **Sensitive — marcar como secret.** |
+
+  Total: 8 vars. Las 2 últimas (`SEED_*`) son opcionales en Vercel si ya seedeaste la DB de prod desde local.
 - [ ] **5.3 Confirmar build command** = `pnpm vercel-build` (corre `drizzle-kit migrate && next build`). Ya está en `package.json`.
 - [ ] **5.4 Primer deploy verde** — un build de prueba que pase migraciones contra Supabase prod.
 
