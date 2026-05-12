@@ -50,16 +50,20 @@ Lo que falta para que la primera obra real entre al sistema y arranque el "paral
 | `Copia de FLUJO DE CAJA - JUNCAL` | Caja de otra obra | F2 |
 | `Copia de JUNCAL 3706` | **Presupuesto de obra** — esto es lo único que entra al importer actual | F1 |
 
-**Sub-tarea A · Adaptar el parser** [P0]:
-- El importer (`scripts/import-sheets/parse.ts`) solo lee CSV con columnas `rubro, descripcion, unidad, cantidad, costo_unitario, moneda_costo, markup, notas`.
-- La hoja `Copia de JUNCAL 3706` tiene columnas reales `RUBRO | UBICACIÓN | DETALLE | COSTO PARCIAL | COSTO TOTAL | MANO OBRA PARCIAL | ...` y bloques separados por contratista (filas tipo "CONTRATISTA 1").
-- No hay columna `unidad` ni `cantidad` ni `markup` explícito; el costo viene total (no unitario) y mezclado mano de obra / materiales.
-- **Decisión pendiente**: (a) extender el parser para leer XLSX y hacer "mejor esfuerzo" con la estructura real, o (b) que Macna prepare un CSV "limpio" en el formato esperado, o (c) hacer una pasada manual de transformación con un script auxiliar.
-- Necesita brainstorming dedicado antes de tocar código.
+**Estado**: 🟡 **EN CURSO** desde 2026-05-12. Brainstorming completo y **spec aprobado**: `docs/superpowers/specs/2026-05-12-importer-xlsx-real-design.md`. Siguiente paso: armar plan de implementación con `writing-plans` + ejecutar con `subagent-driven-development`. Mockups visuales en `src/app/preview-importer/` (temporal).
 
-**Sub-tarea B · Validar contra el importer** [P0, depende de A]:
-- Correr `pnpm import-sheets <archivo> --dry-run` y verificar que el total cliente coincide con lo que reporta Sheets.
-- Si hay diferencias > $0.01 investigar antes de seguir.
+**Alcance final** (ampliado vs lo originalmente listado acá):
+- Parser XLSX integrado al importer con `exceljs` (acepta `.csv` y `.xlsx`).
+- **UI web completa** — no más CLI para el usuario. Dos puntos de entrada: `/obras` (nueva obra desde Excel) + `/obras/[id]` (importar a obra existente).
+- Campo nuevo `item_presupuesto.ubicacion` (text NULL) + migration.
+- Editor existente (Plan 3) es la preview — flag `import_pendiente=true` activa banner + columna de estado.
+- Import parcial permitido con diálogo, audit log de descartes.
+- Re-import sobre borrador: reemplazo con snapshot histórico. Sobre firmado: crea adicional.
+- Una fila Excel con material + MO genera **dos** `ItemPresupuesto` (C.2) para preservar el desglose — refactor a campo `mano_obra_costo` en backlog post-piloto (§ 1.x abajo).
+
+**Sub-tarea A · Implementación** [P0, en curso]: armar plan + ejecutar según el spec.
+
+**Sub-tarea B · Validar contra el importer** [P0, depende de A]: subir el XLSX real desde la UI, verificar que el total proyectado en preview coincide con lo que reporta Sheets. Diferencias > $0.01 → investigar antes de confirmar.
 
 ### 1.2 Smoke manual end-to-end **[P0]**
 
@@ -74,7 +78,7 @@ Los implementers no pueden clickear UI. Antes del piloto, validar a mano:
 
 Hoy `src/db/seed-data.ts` tiene los típicos de construcción AR (Albañilería, Demoliciones, Hormigón, etc.). Mirando el XLSX, los rubros reales que usa Macna en el presupuesto JUNCAL incluyen `DEMOLICION`, `ALBAÑILERIA`, además de una dimensión `UBICACIÓN` (`GENERAL`, `LIV - COM - COC`) que el modelo actual NO contempla.
 
-**Pendiente de brainstorming**: ¿"ubicación" del Excel se mapea a un atributo nuevo de `ItemPresupuesto` o se diluye en `descripcion`? Esto afecta reportes futuros (gasto por habitación, por planta, etc.).
+**Resuelto en spec § 1.1**: `item_presupuesto.ubicacion` (text NULL) con autocomplete de valores ya usados. La migration entra junto con el resto del importer XLSX.
 
 ### 1.4 Bug del integration test harness **[P1]**
 
@@ -83,6 +87,19 @@ Bloquea las 11 suites de integration tests. No afecta unit/build/runtime. Dos fi
 2. `tests/integration/setup.ts` mockear `next/cache` para que `revalidatePath` no rompa fuera de un request store de Next 16.
 
 Después: habilitar la flag `RUN_INTEGRATION` en GitHub Actions y validar que la suite pasa contra una DB de test.
+
+---
+
+### 1.5 Backlog post-piloto derivado del importer XLSX **[P2, post-piloto]**
+
+Cuando cierre 1.1 quedan pendientes (detallados en el spec § 10):
+
+- **C.3 — Refactor a `mano_obra_costo` en schema** (P2): hoy una fila Excel con material + MO genera 2 `ItemPresupuesto`. Post-piloto, consolidar a 1 item por fila con columna nueva `mano_obra_unitario` / `mano_obra_unitario_base`. Implica refactor de `calcularSnapshotItem`, editor (dos columnas) y migration de back-fill para items existentes generados con C.2.
+- **Wizard inteligente de diff** (P2): hoy re-import = reemplazo total. Cambiar a UI tipo git-diff que matchea items por (rubro, descripción, ubicación) y permite mergear cambios. Habilita re-import sobre presupuesto firmado → adicional solo con diferencias.
+- **Config visual del importer** (P3): pantalla `/configuracion/importer` con regex de descartes y mapeo de columnas editables.
+- **Multimoneda por fila** (P3): hoy una moneda default por import. Soportar columna `MONEDA` opcional en el Excel.
+- **Histórico de imports** (P3): pantalla dedicada que liste imports de la obra (creados, cancelados, reemplazados) con archivo origen y diff.
+- **`import_warnings jsonb`** (P3): hoy los warnings por item viven en `notas` con prefix `[import]`. Migrar a columna estructurada si el patrón crece.
 
 ---
 

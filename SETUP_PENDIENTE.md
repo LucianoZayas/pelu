@@ -73,28 +73,23 @@
 
 ---
 
-## 6. Planilla representativa de Sheets ⏳ RECIBIDA, parser pendiente
+## 6. Planilla representativa de Sheets ⏳ RECIBIDA, diseño aprobado, implementación en curso
 
 Archivo recibido (2026-05-12): `/Users/lzayas/Downloads/MACNA ADMINISTRACION - Lucho (1).xlsx`.
 
-**Hallazgo**: el archivo es la administración **completa** de Macna (caja, proyecciones, gastos indirectos, P&L por obra), no solo presupuestos. 8 hojas:
-1. `MACNA - FLUJO DE CAJA` — caja general empresa (F2)
-2. `PROYECCIONES` — forecast por obra (F3)
-3. `F.c - LOZANO` — flujo de caja obra Lozano (F2)
-4. `Res - LOZANO` — P&L obra Lozano (F2)
-5. `GASTOS GENERALES INDIRECTOS - P/O` — payroll (F3)
-6. `Copia de FLUJO DE CAJA - JUNCAL` — caja obra Juncal (F2)
-7. **`Copia de JUNCAL 3706` — presupuesto obra Juncal (F1 — único compatible con el importer actual)**
+**Hallazgo**: el archivo es la administración **completa** de Macna (caja, proyecciones, gastos indirectos, P&L por obra), no solo presupuestos. 8 hojas; solo `Copia de JUNCAL 3706` aplica a F1. Las otras 7 son F2/F3 (ver `docs/ROADMAP.md` § 2).
 
-Las primeras 6 hojas son funcionalidad fuera del alcance de F1 — ver `docs/ROADMAP.md` § 2 para roadmap completo.
+### Estado de las decisiones (cerradas 2026-05-12)
 
-- [ ] **6.1 Adaptar el parser a la estructura real de `Copia de JUNCAL 3706`**
-  - Columnas reales: `RUBRO | UBICACIÓN | DETALLE | COSTO PARCIAL | COSTO TOTAL | MANO OBRA PARCIAL | ...`
-  - Columnas esperadas por el importer: `rubro, descripcion, unidad, cantidad, costo_unitario, moneda_costo, markup, notas`
-  - **Decisión pendiente** (necesita brainstorming): (a) extender parser a XLSX + mapeo flexible, (b) preparar CSV "limpio", o (c) script auxiliar de transformación.
-- [ ] **6.2 Validar `--dry-run` contra la obra real**
-  - Correr el importer y comparar total con lo que da Sheets. Diferencias > $0.01 → investigar.
-- [ ] **6.3 Decidir cómo manejar la columna "UBICACIÓN"** — no existe en el modelo actual. Brainstorming: ¿campo nuevo en `ItemPresupuesto` o se diluye en `descripcion`? Afecta reportes futuros.
+✅ Brainstorming completo + spec aprobado: `docs/superpowers/specs/2026-05-12-importer-xlsx-real-design.md`. Mockups visuales validados en `src/app/preview-importer/` (temporal). Memorias durables guardadas (`feedback_no_cli_for_users`, `feedback_ux_over_implementation`, `feedback_agentes_en_paralelo`).
+
+**Decisiones tomadas**: parser XLSX integrado · UI web completa (no CLI) · campo nuevo `ubicacion` · dos items por fila (material/MO) · editor real como preview con flag `import_pendiente` · import parcial permitido · re-import con snapshot histórico.
+
+### Pendientes de implementación (P0 — bloqueante del piloto)
+
+- [ ] **6.1 Implementar el importer XLSX según el spec** — armar plan (`writing-plans`) + ejecutar (`subagent-driven-development`). Incluye: parser XLSX, migration de schema (campo `ubicacion`, flag `import_pendiente`, snapshot histórico), Server Actions (parse-preview, commit, confirmar, cancelar), 7 componentes UI nuevos, integración con editor existente, tests (unit + integration + E2E), smoke manual.
+- [ ] **6.2 Smoke manual de extremo a extremo** — desde la UI: subir el XLSX real → revisar preview → confirmar → verificar editor + audit log + total proyectado matchea Sheets (diferencias > $0.01 investigar).
+- [ ] **6.3 Limpieza de archivos temporales** — borrar `src/app/preview-importer/` y revertir la entrada de `/preview-importer` en `src/proxy.ts:50` (`publicPaths`) cuando se cierre la implementación.
 
 ---
 
