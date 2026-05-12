@@ -5,6 +5,10 @@ import { parseFile } from '@/../scripts/import-sheets/parse';
 import { commitImport, type CommitImportArgs } from '@/../scripts/import-sheets/ejecutor';
 import { revalidatePath } from 'next/cache';
 import type { ItemPreview, ResultadoParseoXlsx } from './types';
+import { eq } from 'drizzle-orm';
+import { db } from '@/db/client';
+import { obra, presupuesto } from '@/db/schema';
+import { logAudit } from '@/features/audit/log';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -67,5 +71,113 @@ export async function parsePreview(form: FormData): Promise<PreviewResult> {
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error desconocido al parsear' };
+  }
+}
+
+export type ConfirmarImportActionResult =
+  | { ok: true; alreadyConfirmed: boolean }
+  | { ok: false; error: string };
+
+export async function confirmarImportAction({
+  presupuestoId,
+}: {
+  presupuestoId: string;
+}): Promise<ConfirmarImportActionResult> {
+  try {
+    const session = await requireRole('admin');
+    const adminId = session.id;
+
+    const [p] = await db.select().from(presupuesto).where(eq(presupuesto.id, presupuestoId)).limit(1);
+    if (!p) return { ok: false, error: 'Presupuesto no encontrado' };
+    if (!p.importPendiente) return { ok: true, alreadyConfirmed: true };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(presupuesto)
+        .set({ importPendiente: false, updatedBy: adminId, updatedAt: new Date() })
+        .where(eq(presupuesto.id, presupuestoId));
+      await logAudit({
+        entidad: 'presupuesto',
+        entidadId: presupuestoId,
+        accion: 'editar',
+        descripcionHumana: `Import confirmado para presupuesto ${p.tipo} #${p.numero}`,
+        usuarioId: adminId,
+      });
+    });
+
+    revalidatePath(`/obras/${p.obraId}/presupuestos/${presupuestoId}`);
+    return { ok: true, alreadyConfirmed: false };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
+export type CancelarImportActionResult =
+  | { ok: true; redirectTo: string }
+  | { ok: false; error: string };
+
+export async function cancelarImportAction({
+  presupuestoId,
+}: {
+  presupuestoId: string;
+}): Promise<CancelarImportActionResult> {
+  try {
+    const session = await requireRole('admin');
+    const adminId = session.id;
+
+    const [p] = await db.select().from(presupuesto).where(eq(presupuesto.id, presupuestoId)).limit(1);
+    if (!p) return { ok: false, error: 'Presupuesto no encontrado' };
+    if (!p.importPendiente) return { ok: false, error: 'No es una importación pendiente' };
+
+    let redirectTo = '';
+    await db.transaction(async (tx) => {
+      // Caso re-import: find anterior presupuesto that was soft-deleted pointing to this new one
+      const [anterior] = await tx
+        .select()
+        .from(presupuesto)
+        .where(eq(presupuesto.reemplazadoPorImportId, presupuestoId))
+        .limit(1);
+
+      if (anterior) {
+        // Restore anterior: undo soft-delete and clear reemplazadoPorImportId
+        await tx
+          .update(presupuesto)
+          .set({ deletedAt: null, reemplazadoPorImportId: null })
+          .where(eq(presupuesto.id, anterior.id));
+      }
+
+      // Hard delete the new presupuesto (cascade cleans up item_presupuesto rows)
+      await tx.delete(presupuesto).where(eq(presupuesto.id, presupuestoId));
+
+      // Caso obra nueva: if no presupuestos remain, hard delete the obra too
+      const restantes = await tx
+        .select()
+        .from(presupuesto)
+        .where(eq(presupuesto.obraId, p.obraId));
+
+      if (restantes.length === 0) {
+        await tx.delete(obra).where(eq(obra.id, p.obraId));
+        redirectTo = '/obras';
+      } else {
+        redirectTo = `/obras/${p.obraId}`;
+      }
+
+      await logAudit({
+        entidad: 'presupuesto',
+        entidadId: presupuestoId,
+        accion: 'cancelar',
+        descripcionHumana: anterior
+          ? 'Import cancelado, presupuesto anterior restaurado'
+          : restantes.length === 0
+            ? `Import cancelado, obra ${p.obraId} eliminada`
+            : 'Import cancelado',
+        usuarioId: adminId,
+      });
+    });
+
+    revalidatePath('/obras');
+    return { ok: true, redirectTo };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error' };
   }
 }
