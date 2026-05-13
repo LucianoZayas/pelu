@@ -131,12 +131,16 @@ export async function cancelarImportAction({
 
     let redirectTo = '';
     await db.transaction(async (tx) => {
-      // Caso re-import: find anterior presupuesto that was soft-deleted pointing to this new one
-      const [anterior] = await tx
-        .select()
-        .from(presupuesto)
-        .where(eq(presupuesto.reemplazadoPorImportId, presupuestoId))
-        .limit(1);
+      // Caso re-import: the NEW presupuesto has reemplazadoPorImportId pointing to the OLD one
+      const anterior = p.reemplazadoPorImportId
+        ? (
+            await tx
+              .select()
+              .from(presupuesto)
+              .where(eq(presupuesto.id, p.reemplazadoPorImportId))
+              .limit(1)
+          )[0]
+        : undefined;
 
       if (anterior) {
         // Restore anterior: undo soft-delete and clear reemplazadoPorImportId

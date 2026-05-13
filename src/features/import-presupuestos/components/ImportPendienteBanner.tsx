@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import type { ImportMetadata } from '@/features/import-presupuestos/types';
 import { CancelarImportDialog } from './CancelarImportDialog';
@@ -21,6 +22,7 @@ export function ImportPendienteBanner({
   esObraNueva,
   esOperador = false,
 }: Props) {
+  const router = useRouter();
   const [showDescartes, setShowDescartes] = useState(false);
 
   const { archivo, items } = metadata;
@@ -90,6 +92,7 @@ export function ImportPendienteBanner({
                   obraNombre={obraNombre}
                   itemsImportados={totalImportados}
                   esObraNueva={esObraNueva}
+                  onCancelled={(redirectTo) => router.push(redirectTo)}
                 />
                 <ConfirmarImportDialog
                   presupuestoId={presupuestoId}
