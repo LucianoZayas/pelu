@@ -7,6 +7,7 @@ import { db } from '@/db/client';
 import { presupuesto, itemPresupuesto, rubro } from '@/db/schema';
 import { getObraByToken } from '@/lib/auth/cliente-token';
 import { D } from '@/lib/money/decimal';
+import { Download, ArrowLeft } from 'lucide-react';
 
 export default async function PresupuestoClientePage({
   params,
@@ -44,75 +45,129 @@ export default async function PresupuestoClientePage({
     );
   }
 
+  const totalCliente = D(p.totalClienteCalculado ?? '0');
+
   return (
     <article>
-      <div className="flex items-center justify-between mb-6">
+      {/* Header card */}
+      <div className="mb-6 flex items-start justify-between gap-4 rounded-xl border bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)]">
         <div>
-          <h2 className="text-xl font-semibold">Presupuesto #{p.numero}</h2>
-          <p className="text-sm text-muted-foreground">
-            Tipo: {p.tipo} · Firmado: {p.fechaFirma?.toLocaleDateString('es-AR')}
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 mb-1">
+            Presupuesto #{p.numero} · {p.tipo}
+          </p>
+          <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
+            {p.descripcion ?? (p.tipo === 'original' ? 'Presupuesto original' : 'Presupuesto adicional')}
+          </h2>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Firmado el{' '}
+            {p.fechaFirma?.toLocaleDateString('es-AR', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            })}
           </p>
         </div>
-        <a href={`/api/pdf/${p.id}?token=${token}`} className={buttonVariants()}>
+        <a
+          href={`/api/pdf/${p.id}?token=${token}`}
+          className={buttonVariants({ size: 'sm' })}
+        >
+          <Download className="size-3.5" />
           Descargar PDF
         </a>
       </div>
 
-      {p.descripcion && <p className="mb-6">{p.descripcion}</p>}
-
-      <table className="w-full text-sm border">
-        <thead className="bg-slate-50">
-          <tr>
-            <th className="text-left p-2">Descripción</th>
-            <th className="text-left p-2 w-20">Cant.</th>
-            <th className="text-left p-2 w-16">Un.</th>
-            <th className="text-right p-2 w-32">Precio U. ({obra.monedaBase})</th>
-            <th className="text-right p-2 w-32">Subtotal</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.values(grupos).map((g) => (
-            <Fragment key={g.nombre}>
-              <tr className="bg-slate-100">
-                <td colSpan={5} className="p-2 font-semibold">
-                  {g.nombre}
-                </td>
-              </tr>
-              {g.items.map(({ item }) => (
-                <tr key={item.id} className="border-t">
-                  <td className="p-2">{item.descripcion}</td>
-                  <td className="p-2">{item.cantidad}</td>
-                  <td className="p-2">{item.unidad}</td>
-                  <td className="p-2 text-right">{D(item.precioUnitarioCliente).toFixed(2)}</td>
-                  <td className="p-2 text-right">
-                    {D(item.precioUnitarioCliente).times(item.cantidad).toFixed(2)}
+      {/* Items table */}
+      <div className="rounded-xl border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] overflow-hidden mb-6">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="border-b bg-[#F8F9FB]">
+              <th className="text-left px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                Descripción
+              </th>
+              <th className="text-left px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-20">
+                Cant.
+              </th>
+              <th className="text-left px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-16">
+                Un.
+              </th>
+              <th className="text-right px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-32">
+                P. Unit. ({obra.monedaBase})
+              </th>
+              <th className="text-right px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-36">
+                Subtotal
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {Object.values(grupos).map((g) => (
+              <Fragment key={g.nombre}>
+                {/* Rubro header */}
+                <tr className="bg-secondary/50">
+                  <td colSpan={5} className="px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {g.nombre}
                   </td>
                 </tr>
-              ))}
-              <tr className="border-t font-medium">
-                <td colSpan={4} className="p-2 text-right">
-                  Subtotal {g.nombre}
-                </td>
-                <td className="p-2 text-right">{g.subtotal.toFixed(2)}</td>
-              </tr>
-            </Fragment>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr className="border-t-2 font-semibold text-lg">
-            <td colSpan={4} className="p-2 text-right">
-              Total
-            </td>
-            <td className="p-2 text-right">
-              {D(p.totalClienteCalculado ?? '0').toFixed(2)} {obra.monedaBase}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+                {g.items.map(({ item }) => (
+                  <tr key={item.id} className="hover:bg-secondary/20 transition-colors">
+                    <td className="px-4 py-2.5 text-foreground">{item.descripcion}</td>
+                    <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.cantidad}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{item.unidad}</td>
+                    <td className="px-4 py-2.5 text-right font-mono">
+                      {D(item.precioUnitarioCliente).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono">
+                      {D(item.precioUnitarioCliente).times(item.cantidad).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+                {/* Subtotal row */}
+                <tr className="bg-secondary/30 border-t">
+                  <td colSpan={4} className="px-4 py-2 text-right text-[12px] font-semibold text-muted-foreground">
+                    Subtotal {g.nombre}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono font-semibold">
+                    {g.subtotal.toFixed(2)}
+                  </td>
+                </tr>
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <Link href={`/cliente/${token}`} className="text-sm underline mt-6 inline-block">
-        ← Volver
-      </Link>
+      {/* Total destacado */}
+      <div className="mb-8 flex justify-end">
+        <div className="rounded-xl border bg-white px-6 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] text-right">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 mb-1">
+            Total {obra.monedaBase}
+          </p>
+          <p className="font-mono text-[28px] font-bold tracking-tight text-foreground">
+            {totalCliente.toFixed(2)}
+          </p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">{obra.monedaBase}</p>
+        </div>
+      </div>
+
+      {/* PDF CTA */}
+      <div className="flex justify-center mb-4">
+        <a
+          href={`/api/pdf/${p.id}?token=${token}`}
+          className={buttonVariants()}
+        >
+          <Download className="size-4" />
+          Descargar PDF
+        </a>
+      </div>
+
+      <div className="flex justify-center">
+        <Link
+          href={`/cliente/${token}`}
+          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-4" />
+          Volver a presupuestos
+        </Link>
+      </div>
     </article>
   );
 }
