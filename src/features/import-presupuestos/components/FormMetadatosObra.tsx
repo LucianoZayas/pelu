@@ -19,6 +19,7 @@ interface Props {
   initialValues: Partial<MetadatosObraValues>;
   onChange: (values: MetadatosObraValues) => void;
   disabled?: boolean;
+  cotizacionWarning?: string;
 }
 
 const DEFAULTS: MetadatosObraValues = {
@@ -31,7 +32,7 @@ const DEFAULTS: MetadatosObraValues = {
   markupDefaultPorcentaje: '30',
 };
 
-export function FormMetadatosObra({ initialValues, onChange, disabled = false }: Props) {
+export function FormMetadatosObra({ initialValues, onChange, disabled = false, cotizacionWarning }: Props) {
   const [state, setState] = useState<MetadatosObraValues>({
     ...DEFAULTS,
     ...initialValues,
@@ -124,6 +125,9 @@ export function FormMetadatosObra({ initialValues, onChange, disabled = false }:
           disabled={disabled}
           placeholder="Ej: 1000"
         />
+        {cotizacionWarning && (
+          <p className="mt-1 text-xs text-destructive">{cotizacionWarning}</p>
+        )}
       </div>
 
       {/* Moneda base */}
