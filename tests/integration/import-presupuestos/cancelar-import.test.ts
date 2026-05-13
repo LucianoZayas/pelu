@@ -119,8 +119,10 @@ async function seedReimport(): Promise<{
     })
     .returning({ id: presupuesto.id });
 
-  // nuevo presupuesto — import_pendiente=true, reemplazadoPorImportId will point from anterior to nuevo
-  // Actually: anterior.reemplazadoPorImportId points to nuevo (the new import)
+  // nuevo presupuesto — import_pendiente=true, reemplazadoPorImportId points to anterior.
+  // Convention (from commitImport in ejecutor.ts): the NEW presupuesto's
+  // reemplazadoPorImportId references the OLD one it replaced. The OLD presupuesto
+  // is soft-deleted (deletedAt set) but its own reemplazadoPorImportId stays null.
   const [nuevo] = await db
     .insert(presupuesto)
     .values({
@@ -130,18 +132,16 @@ async function seedReimport(): Promise<{
       estado: 'borrador',
       cotizacionUsd: '1500',
       importPendiente: true,
+      reemplazadoPorImportId: anterior.id,
       createdBy: adminUser.id,
       updatedBy: adminUser.id,
     })
     .returning({ id: presupuesto.id });
 
-  // Soft-delete anterior and set reemplazadoPorImportId -> nuevo
+  // Soft-delete anterior (no reemplazadoPorImportId on it; the new one points back).
   await db
     .update(presupuesto)
-    .set({
-      deletedAt: new Date(),
-      reemplazadoPorImportId: nuevo.id,
-    })
+    .set({ deletedAt: new Date() })
     .where(eq(presupuesto.id, anterior.id));
 
   return { obraId: obraCreada.id, anteriorId: anterior.id, nuevoId: nuevo.id };
