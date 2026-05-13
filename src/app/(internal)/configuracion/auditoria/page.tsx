@@ -2,6 +2,7 @@ import { requireRole } from '@/lib/auth/require';
 import { buscarLogs, type BuscarFiltros } from '@/features/audit/queries';
 import { AuditoriaTable } from '@/features/audit/components/auditoria-table';
 import { AuditoriaFiltros } from '@/features/audit/components/auditoria-filtros';
+import { PageHeader } from '@/components/page-header';
 
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   await requireRole('admin');
@@ -14,8 +15,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     limit: 200,
   });
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-6">Auditoría</h1>
+    <div className="px-8 py-7 max-w-[1280px]">
+      <PageHeader
+        kicker="Configuración"
+        title="Auditoría"
+        description="Registro de acciones realizadas en el sistema."
+      />
       <AuditoriaFiltros />
       <AuditoriaTable rows={rows} />
     </div>

@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Download } from 'lucide-react';
 
 export function AuditoriaFiltros() {
   const router = useRouter();
@@ -18,45 +19,75 @@ export function AuditoriaFiltros() {
   }
 
   return (
-    <div className="flex gap-3 items-end mb-4">
-      <div>
-        <Label>Entidad</Label>
-        <Select value={sp.get('entidad') ?? ALL} onValueChange={(v) => update('entidad', v)}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Todas" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas</SelectItem>
-            <SelectItem value="obra">Obra</SelectItem>
-            <SelectItem value="presupuesto">Presupuesto</SelectItem>
-            <SelectItem value="usuario">Usuario</SelectItem>
-            <SelectItem value="cliente_token">Token cliente</SelectItem>
-            <SelectItem value="rubro">Rubro</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="mb-5 rounded-xl border bg-card p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.08)]">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wide">
+            Entidad
+          </Label>
+          <Select value={sp.get('entidad') ?? ALL} onValueChange={(v) => update('entidad', v)}>
+            <SelectTrigger className="w-40 text-[13px]">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas</SelectItem>
+              <SelectItem value="obra">Obra</SelectItem>
+              <SelectItem value="presupuesto">Presupuesto</SelectItem>
+              <SelectItem value="usuario">Usuario</SelectItem>
+              <SelectItem value="cliente_token">Token cliente</SelectItem>
+              <SelectItem value="rubro">Rubro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wide">
+            Acción
+          </Label>
+          <Select value={sp.get('accion') ?? ALL} onValueChange={(v) => update('accion', v)}>
+            <SelectTrigger className="w-40 text-[13px]">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas</SelectItem>
+              <SelectItem value="crear">Crear</SelectItem>
+              <SelectItem value="editar">Editar</SelectItem>
+              <SelectItem value="firmar">Firmar</SelectItem>
+              <SelectItem value="cancelar">Cancelar</SelectItem>
+              <SelectItem value="eliminar">Eliminar</SelectItem>
+              <SelectItem value="regenerar_token">Regenerar token</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wide">
+            Desde
+          </Label>
+          <Input
+            type="date"
+            defaultValue={sp.get('desde') ?? ''}
+            onBlur={(e) => update('desde', e.target.value)}
+            className="w-36 text-[13px]"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11.5px] font-medium text-muted-foreground uppercase tracking-wide">
+            Hasta
+          </Label>
+          <Input
+            type="date"
+            defaultValue={sp.get('hasta') ?? ''}
+            onBlur={(e) => update('hasta', e.target.value)}
+            className="w-36 text-[13px]"
+          />
+        </div>
+        <a
+          href={`/api/export/auditoria?${sp.toString()}`}
+          className={buttonVariants({ variant: 'outline', size: 'sm' })}
+        >
+          <Download className="size-3.5" />
+          Exportar XLSX
+        </a>
       </div>
-      <div>
-        <Label>Acción</Label>
-        <Select value={sp.get('accion') ?? ALL} onValueChange={(v) => update('accion', v)}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Todas" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas</SelectItem>
-            <SelectItem value="crear">Crear</SelectItem>
-            <SelectItem value="editar">Editar</SelectItem>
-            <SelectItem value="firmar">Firmar</SelectItem>
-            <SelectItem value="cancelar">Cancelar</SelectItem>
-            <SelectItem value="eliminar">Eliminar</SelectItem>
-            <SelectItem value="regenerar_token">Regenerar token</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Desde</Label>
-        <Input type="date" defaultValue={sp.get('desde') ?? ''} onBlur={(e) => update('desde', e.target.value)} />
-      </div>
-      <div>
-        <Label>Hasta</Label>
-        <Input type="date" defaultValue={sp.get('hasta') ?? ''} onBlur={(e) => update('hasta', e.target.value)} />
-      </div>
-      <a href={`/api/export/auditoria?${sp.toString()}`} className={buttonVariants({ variant: 'outline' })}>Exportar XLSX</a>
     </div>
   );
 }
