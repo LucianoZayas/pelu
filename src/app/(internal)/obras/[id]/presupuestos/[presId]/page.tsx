@@ -3,6 +3,8 @@ import { requireSession } from '@/lib/auth/require';
 import { getPresupuesto, getItemsConRubros } from '@/features/presupuestos/queries';
 import { listarRubrosPlanos } from '@/features/rubros/queries';
 import { EditorForm } from '@/features/presupuestos/components/editor-form';
+import { PageHeader } from '@/components/page-header';
+import { EstadoBadge } from '@/components/estado-badge';
 
 type ItemForm = {
   id?: string;
@@ -49,10 +51,18 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
     });
   }
 
+  const kicker = `PRESUPUESTO #${p.numero} · ${p.obra.codigo}`;
+  const title = p.descripcion ?? (p.tipo === 'original' ? 'Original' : 'Adicional');
+
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-2">{p.obra.codigo} · Presupuesto #{p.numero} ({p.tipo})</h1>
-      <p className="text-sm text-muted-foreground mb-6">Estado: <strong>{p.estado}</strong></p>
+    <div className="px-8 py-7 max-w-[1280px]">
+      <PageHeader
+        kicker={kicker}
+        title={title}
+        description={`${p.obra.nombre} · ${p.tipo}`}
+        actions={<EstadoBadge estado={p.estado} />}
+      />
+
       <EditorForm
         presupuestoId={p.id}
         initialVersion={p.version}

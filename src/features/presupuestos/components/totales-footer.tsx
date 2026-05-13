@@ -24,9 +24,21 @@ export function TotalesFooter({ monedaBase }: { monedaBase: 'USD' | 'ARS' }) {
     }
   }
   return (
-    <footer className="sticky bottom-0 bg-white border-t p-4 flex justify-end gap-8">
-      <div><span className="text-muted-foreground text-sm">Costo total: </span><span className="font-semibold">{totCosto.toFixed(2)} {monedaBase}</span></div>
-      <div><span className="text-muted-foreground text-sm">Cliente total: </span><span className="font-semibold text-lg">{totCliente.toFixed(2)} {monedaBase}</span></div>
+    <footer className="sticky bottom-0 z-10 border-t bg-card/95 backdrop-blur-sm px-6 py-3.5 flex items-center justify-end gap-8 shadow-[0_-1px_0_rgba(16,24,40,0.06)]">
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[12px] text-muted-foreground uppercase tracking-wide font-medium">Costo</span>
+        <span className="font-mono text-[15px] font-semibold text-foreground">
+          {totCosto.toFixed(2)}
+        </span>
+        <span className="text-[12px] text-muted-foreground">{monedaBase}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[12px] text-muted-foreground uppercase tracking-wide font-medium">Cliente</span>
+        <span className="font-mono text-[18px] font-bold text-primary">
+          {totCliente.toFixed(2)}
+        </span>
+        <span className="text-[13px] font-medium text-muted-foreground">{monedaBase}</span>
+      </div>
     </footer>
   );
 }

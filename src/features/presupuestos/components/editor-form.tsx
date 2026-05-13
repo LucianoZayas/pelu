@@ -107,27 +107,69 @@ export function EditorForm(props: Props) {
 
       {stale && <StaleVersionBanner />}
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div><Label>Descripción</Label><Input {...methods.register('descripcion')} disabled={disabled} /></div>
-        <div><Label>Markup default %</Label><Input type="number" step="0.01" {...methods.register('markupDefaultPorcentaje')} disabled={disabled} /></div>
-        <div><Label>Cotización USD</Label><Input type="number" step="0.0001" {...methods.register('cotizacionUsd')} disabled={disabled} /></div>
+      {/* Meta fields — card grid 3 cols */}
+      <div className="mb-6 rounded-xl border bg-card shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.08)] p-5">
+        <p className="mb-3 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+          Parámetros del presupuesto
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label className="text-[12px]">Descripción</Label>
+            <Input
+              {...methods.register('descripcion')}
+              disabled={disabled}
+              placeholder="Opcional"
+              className="text-[13.5px]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[12px]">Markup default %</Label>
+            <Input
+              type="number"
+              step="0.01"
+              {...methods.register('markupDefaultPorcentaje')}
+              disabled={disabled}
+              className="text-[13.5px] font-mono"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[12px]">Cotización USD</Label>
+            <Input
+              type="number"
+              step="0.0001"
+              {...methods.register('cotizacionUsd')}
+              disabled={disabled}
+              className="text-[13.5px] font-mono"
+            />
+          </div>
+        </div>
       </div>
 
-      {props.initialGrupos.map((g, idx) => (
-        <RubroAcordeon
-          key={g.rubroId}
-          rubroIdx={idx}
-          rubroNombre={g.rubroNombre}
-          rubrosOptions={props.rubros}
-          disabled={disabled}
-          importPendiente={props.importPendiente}
-        />
-      ))}
+      {/* Rubros */}
+      <div className="mb-2">
+        {props.initialGrupos.map((g, idx) => (
+          <RubroAcordeon
+            key={g.rubroId}
+            rubroIdx={idx}
+            rubroNombre={g.rubroNombre}
+            rubrosOptions={props.rubros}
+            disabled={disabled}
+            importPendiente={props.importPendiente}
+          />
+        ))}
+      </div>
 
       <TotalesFooter monedaBase={props.monedaBase} />
 
-      <div className="flex gap-2 mt-4">
-        <Button onClick={save} disabled={!dirty || saving || disabled}>{saving ? 'Guardando...' : 'Guardar borrador'}</Button>
+      {/* Action toolbar */}
+      <div className="sticky bottom-[61px] z-10 flex items-center gap-2 border-t bg-card/95 px-0 py-3.5 backdrop-blur-sm">
+        <Button
+          onClick={save}
+          disabled={!dirty || saving || disabled}
+          size="sm"
+        >
+          {saving ? 'Guardando…' : 'Guardar borrador'}
+        </Button>
         {props.initialEstado === 'borrador' && (
           <>
             <FirmarDialog presupuestoId={props.presupuestoId} version={version} dirty={dirty} />
