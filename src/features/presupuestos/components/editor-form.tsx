@@ -13,6 +13,8 @@ import { TotalesFooter } from './totales-footer';
 import { FirmarDialog } from './firmar-dialog';
 import { CancelarDialog } from './cancelar-dialog';
 import { useAutosave } from '../hooks/use-autosave';
+import { ImportPendienteBanner } from '@/features/import-presupuestos/components/ImportPendienteBanner';
+import type { ImportMetadata } from '@/features/import-presupuestos/types';
 
 type Item = {
   id?: string; rubroId: string; orden: number;
@@ -33,6 +35,12 @@ type Props = {
   monedaBase: 'USD' | 'ARS';
   rubros: { id: string; nombre: string }[];
   initialGrupos: RubroGrupo[];
+  // import
+  importPendiente: boolean;
+  importMetadata: unknown;
+  presupuestoTipo: 'original' | 'adicional';
+  obraNombre: string;
+  userRol: 'admin' | 'operador';
 };
 
 export function EditorForm(props: Props) {
@@ -40,6 +48,8 @@ export function EditorForm(props: Props) {
   const [version, setVersion] = useState(props.initialVersion);
   const [stale, setStale] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const esObraNueva = props.presupuestoTipo === 'original';
 
   const methods = useForm({
     defaultValues: {
@@ -83,6 +93,16 @@ export function EditorForm(props: Props) {
 
   return (
     <FormProvider {...methods}>
+      {props.importPendiente && (
+        <ImportPendienteBanner
+          presupuestoId={props.presupuestoId}
+          obraNombre={props.obraNombre}
+          metadata={props.importMetadata as ImportMetadata}
+          esObraNueva={esObraNueva}
+          esOperador={props.userRol === 'operador'}
+        />
+      )}
+
       {stale && <StaleVersionBanner />}
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -98,6 +118,7 @@ export function EditorForm(props: Props) {
           rubroNombre={g.rubroNombre}
           rubrosOptions={props.rubros}
           disabled={disabled}
+          importPendiente={props.importPendiente}
         />
       ))}
 

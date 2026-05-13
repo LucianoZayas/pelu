@@ -9,9 +9,10 @@ type Props = {
   rubroIdx: number;
   rubrosOptions: { id: string; nombre: string }[];
   disabled: boolean;
+  importPendiente: boolean;
 };
 
-export function ItemsTabla({ rubroIdx, rubrosOptions, disabled }: Props) {
+export function ItemsTabla({ rubroIdx, rubrosOptions, disabled, importPendiente }: Props) {
   const { control } = useFormContext();
   const { fields, append, remove } = useFieldArray({ control, name: `rubros.${rubroIdx}.items` });
   const parentRef = useRef<HTMLDivElement>(null);
@@ -40,6 +41,7 @@ export function ItemsTabla({ rubroIdx, rubrosOptions, disabled }: Props) {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 sticky top-0">
               <tr>
+                {importPendiente && <th className="text-left p-1 w-20">Estado</th>}
                 <th className="text-left p-1">Descripción</th>
                 <th className="text-left p-1">Cant</th>
                 <th className="text-left p-1">Un.</th>
@@ -51,7 +53,7 @@ export function ItemsTabla({ rubroIdx, rubrosOptions, disabled }: Props) {
             </thead>
             <tbody style={{ height: rowVirtualizer.getTotalSize() }}>
               {rowVirtualizer.getVirtualItems().map((v) => (
-                <ItemRow key={fields[v.index].id} rubroIdx={rubroIdx} itemIdx={v.index} onRemove={() => remove(v.index)} rubrosOptions={rubrosOptions} disabled={disabled} />
+                <ItemRow key={fields[v.index].id} rubroIdx={rubroIdx} itemIdx={v.index} onRemove={() => remove(v.index)} rubrosOptions={rubrosOptions} disabled={disabled} importPendiente={importPendiente} />
               ))}
             </tbody>
           </table>
@@ -60,6 +62,7 @@ export function ItemsTabla({ rubroIdx, rubrosOptions, disabled }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
+              {importPendiente && <th className="text-left p-1 w-20">Estado</th>}
               <th className="text-left p-1">Descripción</th>
               <th className="text-left p-1">Cant</th>
               <th className="text-left p-1">Un.</th>
@@ -71,7 +74,7 @@ export function ItemsTabla({ rubroIdx, rubrosOptions, disabled }: Props) {
           </thead>
           <tbody>
             {fields.map((f, i) => (
-              <ItemRow key={f.id} rubroIdx={rubroIdx} itemIdx={i} onRemove={() => remove(i)} rubrosOptions={rubrosOptions} disabled={disabled} />
+              <ItemRow key={f.id} rubroIdx={rubroIdx} itemIdx={i} onRemove={() => remove(i)} rubrosOptions={rubrosOptions} disabled={disabled} importPendiente={importPendiente} />
             ))}
           </tbody>
         </table>
