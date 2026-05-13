@@ -50,20 +50,21 @@ Lo que falta para que la primera obra real entre al sistema y arranque el "paral
 | `Copia de FLUJO DE CAJA - JUNCAL` | Caja de otra obra | F2 |
 | `Copia de JUNCAL 3706` | **Presupuesto de obra** — esto es lo único que entra al importer actual | F1 |
 
-**Estado**: 🟡 **EN CURSO** desde 2026-05-12. Brainstorming completo y **spec aprobado**: `docs/superpowers/specs/2026-05-12-importer-xlsx-real-design.md`. Siguiente paso: armar plan de implementación con `writing-plans` + ejecutar con `subagent-driven-development`. Mockups visuales en `src/app/preview-importer/` (temporal).
+**Estado**: ✅ **HECHO (2026-05-12)**. Spec: `docs/superpowers/specs/2026-05-12-importer-xlsx-real-design.md`. Plan ejecutado: `docs/superpowers/plans/2026-05-12-plan-importer-xlsx-real.md`. 33 commits en branch `importer-xlsx-real` mergeada a `main` el 2026-05-12.
 
-**Alcance final** (ampliado vs lo originalmente listado acá):
-- Parser XLSX integrado al importer con `exceljs` (acepta `.csv` y `.xlsx`).
-- **UI web completa** — no más CLI para el usuario. Dos puntos de entrada: `/obras` (nueva obra desde Excel) + `/obras/[id]` (importar a obra existente).
-- Campo nuevo `item_presupuesto.ubicacion` (text NULL) + migration.
-- Editor existente (Plan 3) es la preview — flag `import_pendiente=true` activa banner + columna de estado.
-- Import parcial permitido con diálogo, audit log de descartes.
-- Re-import sobre borrador: reemplazo con snapshot histórico. Sobre firmado: crea adicional.
-- Una fila Excel con material + MO genera **dos** `ItemPresupuesto` (C.2) para preservar el desglose — refactor a campo `mano_obra_costo` en backlog post-piloto (§ 1.x abajo).
+**Implementado**:
+- Parser XLSX integrado con `exceljs` (acepta `.csv` y `.xlsx`). 30 unit tests.
+- UI web completa: `/obras/importar` (nueva obra) + `/obras/[id]/importar` (a obra existente) + botones de entrada admin-only.
+- Schema migration 0002: `presupuesto.import_pendiente`, `import_metadata`, `reemplazado_por_import_id`, `item_presupuesto.ubicacion`, índice parcial.
+- 4 Server Actions (`parsePreview`, `commitImportAction`, `confirmarImportAction`, `cancelarImportAction`). 16 integration tests.
+- 7 componentes UI nuevos en `src/features/import-presupuestos/components/`.
+- Editor existente (Plan 3) extendido: banner sticky cuando `import_pendiente=true`, columna Estado por item con chip + tooltip de warnings, permisos operador read-only.
+- Una fila Excel con material + MO → **dos** `ItemPresupuesto` (C.2). Refactor a `mano_obra_costo` queda en backlog post-piloto (§ 1.5).
+- 3 E2E Playwright (happy path / re-import borrador / cancelar). 4/4 passing.
 
-**Sub-tarea A · Implementación** [P0, en curso]: armar plan + ejecutar según el spec.
-
-**Sub-tarea B · Validar contra el importer** [P0, depende de A]: subir el XLSX real desde la UI, verificar que el total proyectado en preview coincide con lo que reporta Sheets. Diferencias > $0.01 → investigar antes de confirmar.
+**Pendiente para cerrar piloto** (smoke manual — solo el usuario lo puede hacer):
+- Subir el XLSX real desde `/obras` → "Nueva obra desde Excel" → preview → confirmar → verificar que el total proyectado coincide con lo que reporta Sheets. Diferencias > $0.01 investigar.
+- Probar también permisos operador con `lucho.2835@macna.local` (credenciales en memoria).
 
 ### 1.2 Smoke manual end-to-end **[P0]**
 

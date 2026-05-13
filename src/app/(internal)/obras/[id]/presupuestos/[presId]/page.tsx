@@ -63,6 +63,11 @@ export default async function EditorPage({ params }: { params: Promise<{ id: str
         monedaBase={p.obra.monedaBase}
         rubros={rubros.filter((r) => r.activo).map((r) => ({ id: r.id, nombre: r.nombre }))}
         initialGrupos={Array.from(gruposMap.values())}
+        importPendiente={p.importPendiente}
+        importMetadata={p.importMetadata}
+        presupuestoTipo={p.tipo}
+        obraNombre={p.obra.nombre}
+        userRol={user.rol}
       />
     </div>
   );

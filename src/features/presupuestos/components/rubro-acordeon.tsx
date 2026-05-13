@@ -7,9 +7,10 @@ type Props = {
   rubroNombre: string;
   rubrosOptions: { id: string; nombre: string }[];
   disabled: boolean;
+  importPendiente: boolean;
 };
 
-export function RubroAcordeon({ rubroIdx, rubroNombre, rubrosOptions, disabled }: Props) {
+export function RubroAcordeon({ rubroIdx, rubroNombre, rubrosOptions, disabled, importPendiente }: Props) {
   const [open, setOpen] = useState(rubroIdx < 3);
   return (
     <section className="border rounded mb-2">
@@ -19,7 +20,7 @@ export function RubroAcordeon({ rubroIdx, rubroNombre, rubrosOptions, disabled }
       </button>
       {open && (
         <div className="p-3 border-t">
-          <ItemsTabla rubroIdx={rubroIdx} rubrosOptions={rubrosOptions} disabled={disabled} />
+          <ItemsTabla rubroIdx={rubroIdx} rubrosOptions={rubrosOptions} disabled={disabled} importPendiente={importPendiente} />
         </div>
       )}
     </section>

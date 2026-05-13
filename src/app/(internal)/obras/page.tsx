@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
+import { Upload } from 'lucide-react';
 import { listarObras } from '@/features/obras/queries';
 import { ObrasTable } from '@/features/obras/components/obras-table';
 import { requireSession } from '@/lib/auth/require';
@@ -14,7 +15,13 @@ export default async function ObrasPage() {
         <div className="flex gap-2">
           <a href="/api/export/obras" className={buttonVariants({ variant: 'outline' })}>Exportar XLSX</a>
           {user.rol === 'admin' && (
-            <Link href="/obras/nueva" className={buttonVariants()}>Nueva obra</Link>
+            <>
+              <Link href="/obras/nueva" className={buttonVariants()}>Nueva obra</Link>
+              <Link href="/obras/importar" className={buttonVariants({ variant: 'outline' })}>
+                <Upload className="mr-2 h-4 w-4" />
+                Nueva obra desde Excel
+              </Link>
+            </>
           )}
         </div>
       </div>

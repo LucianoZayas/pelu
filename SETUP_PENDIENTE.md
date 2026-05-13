@@ -73,23 +73,28 @@
 
 ---
 
-## 6. Planilla representativa de Sheets ⏳ RECIBIDA, diseño aprobado, implementación en curso
+## 6. Importer XLSX real ✅ IMPLEMENTADO (2026-05-12)
 
-Archivo recibido (2026-05-12): `/Users/lzayas/Downloads/MACNA ADMINISTRACION - Lucho (1).xlsx`.
+Archivo de referencia: `/Users/lzayas/Downloads/MACNA ADMINISTRACION - Lucho (1).xlsx`. Fixture copiado a `scripts/import-sheets/__fixtures__/juncal-3706-real.xlsx`.
 
-**Hallazgo**: el archivo es la administración **completa** de Macna (caja, proyecciones, gastos indirectos, P&L por obra), no solo presupuestos. 8 hojas; solo `Copia de JUNCAL 3706` aplica a F1. Las otras 7 son F2/F3 (ver `docs/ROADMAP.md` § 2).
+**Decisiones de diseño**: parser XLSX integrado · UI web completa (no CLI) · campo nuevo `ubicacion` · dos items por fila (material/MO) · editor existente como preview con flag `import_pendiente` · import parcial permitido · re-import con snapshot histórico. Spec: `docs/superpowers/specs/2026-05-12-importer-xlsx-real-design.md`. Plan ejecutado: `docs/superpowers/plans/2026-05-12-plan-importer-xlsx-real.md`.
 
-### Estado de las decisiones (cerradas 2026-05-12)
+**Implementación completa (33 commits en branch `importer-xlsx-real`)**:
+- ✅ Schema migration `0002_importer_xlsx.sql` (4 columnas + 1 índice parcial) aplicada
+- ✅ Parser puro (`scripts/import-sheets/parse-xlsx.ts`) con TDD — 30 unit tests
+- ✅ `commitImport` reusable (txn atómica) en `scripts/import-sheets/ejecutor.ts`
+- ✅ 4 Server Actions (`parsePreview`, `commitImportAction`, `confirmarImportAction`, `cancelarImportAction`) — 16 integration tests
+- ✅ 7 componentes UI en `src/features/import-presupuestos/components/`
+- ✅ Páginas `/obras/importar` (nueva obra) y `/obras/[id]/importar` (a obra existente)
+- ✅ Botones de entrada admin-only en `/obras` y `/obras/[id]`
+- ✅ Integración en editor existente (banner sticky + columna Estado + permisos operador)
+- ✅ 3 E2E (happy path, re-import borrador, cancelar) — 4/4 passing
+- ✅ Usuario operador seedeado para tests E2E (script `scripts/seed-operador.ts`)
+- ✅ Bugs encontrados durante E2E corregidos (cancelarImportAction query inversa, banner sin router.push)
 
-✅ Brainstorming completo + spec aprobado: `docs/superpowers/specs/2026-05-12-importer-xlsx-real-design.md`. Mockups visuales validados en `src/app/preview-importer/` (temporal). Memorias durables guardadas (`feedback_no_cli_for_users`, `feedback_ux_over_implementation`, `feedback_agentes_en_paralelo`).
-
-**Decisiones tomadas**: parser XLSX integrado · UI web completa (no CLI) · campo nuevo `ubicacion` · dos items por fila (material/MO) · editor real como preview con flag `import_pendiente` · import parcial permitido · re-import con snapshot histórico.
-
-### Pendientes de implementación (P0 — bloqueante del piloto)
-
-- [ ] **6.1 Implementar el importer XLSX según el spec** — armar plan (`writing-plans`) + ejecutar (`subagent-driven-development`). Incluye: parser XLSX, migration de schema (campo `ubicacion`, flag `import_pendiente`, snapshot histórico), Server Actions (parse-preview, commit, confirmar, cancelar), 7 componentes UI nuevos, integración con editor existente, tests (unit + integration + E2E), smoke manual.
-- [ ] **6.2 Smoke manual de extremo a extremo** — desde la UI: subir el XLSX real → revisar preview → confirmar → verificar editor + audit log + total proyectado matchea Sheets (diferencias > $0.01 investigar).
-- [ ] **6.3 Limpieza de archivos temporales** — borrar `src/app/preview-importer/` y revertir la entrada de `/preview-importer` en `src/proxy.ts:50` (`publicPaths`) cuando se cierre la implementación.
+**Pendiente**:
+- [ ] **6.1 Smoke manual end-to-end en producción** — login admin → `/obras` → "Nueva obra desde Excel" → subir el XLSX real → revisar preview → confirmar → verificar editor + audit log + total proyectado matchea Sheets (diferencias > $0.01 investigar). Probar también re-import sobre borrador y cancelar.
+- [ ] **6.2 Probar permisos operador** — login con `lucho.2835@macna.local` (creado 2026-05-12, password en memoria `~/.claude/projects/-Users-lzayas-Desktop-Pelu/memory/project_test_credentials.md`) → verificar que NO ve botones de import + que si abre un presupuesto con `import_pendiente=true` ve banner read-only sin botones Confirmar/Cancelar.
 
 ---
 

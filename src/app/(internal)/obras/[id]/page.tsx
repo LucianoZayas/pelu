@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
+import { Upload } from 'lucide-react';
 import { requireSession } from '@/lib/auth/require';
 import { getObra } from '@/features/obras/queries';
 import { ObraSummary } from '@/features/obras/components/obra-summary';
@@ -24,6 +25,10 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
           <>
             <Link href={`/obras/${id}/editar`} className={buttonVariants()}>Editar</Link>
             <Link href={`/obras/${id}/presupuestos/nuevo`} className={buttonVariants({ variant: 'outline' })}>Nuevo presupuesto</Link>
+            <Link href={`/obras/${id}/importar`} className={buttonVariants({ variant: 'outline' })}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar presupuesto desde Excel
+            </Link>
             <RegenerarTokenButton obraId={obra.id} currentToken={obra.clienteToken} />
             <a href={previewUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: 'outline' })}>Previsualizar como cliente</a>
           </>

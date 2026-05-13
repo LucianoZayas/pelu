@@ -578,6 +578,71 @@ No permitir confirmar import si hay algún error. Descartado: frustra al usuario
 
 Mi propuesta inicial. Descartada por el usuario: violación directa del principio "UX > implementation cost".
 
+### 11.6 `import_metadata` schema — flat con strings JSON encoded (descartada en Task 11)
+
+3 sub-agentes propusieron schemas alternativos para `presupuesto.import_metadata`. La opción **flat** mete las arrays de descartes/warnings como string JSON-encoded (`descartesJson: string`, `warningsJson: string`) junto a 8 keys scalar planos (11 keys totales, ~13 KB).
+
+**Drawbacks que la descartaron**:
+- **Acceso opaco a datos anidados**: el banner que expande descartes tiene que `JSON.parse(descartesJson)` en cada expansión. Memoization mitiga pero introduce complejidad sin upside.
+- **Type-safety vulnerada**: TypeScript no enforces el shape de un string JSON-encoded. Un futuro contributor podría meter un JSON con shape distinto y nadie se daría cuenta hasta runtime.
+- **Forensics SQL bloqueada**: queries como "imports con > 5 warnings de tipo X" requieren parsear strings en application code; no se puede usar operadores jsonb nativos (`->`, `->>`, `jsonb_array_elements`).
+- **Lo peor de ambos mundos**: el nombre "flat" sugiere acceso directo, pero los datos importantes (descartes/warnings) viven detrás de un string opaco.
+
+**Cuándo revisar**: si en el futuro Postgres queries sobre el contenido de `import_metadata` se vuelven raras (todo lo importante se accede via la app), y el JSON parse overhead se vuelve medible, esta opción podría ser viable como "metadata-as-blob".
+
+### 11.7 `import_metadata` schema — minimal sólo counts (descartada en Task 11)
+
+3 sub-agentes propusieron schemas alternativos. La opción **minimal** persiste sólo 5 scalars (`archivoNombre`, `hojaParseada`, `itemsCount`, `warningsCount`, `descartesCount`) y delega la lista completa de descartes al `audit_log.diff` y los warnings per-item a `item_presupuesto.notas` con prefix `[import]`. ~150 bytes.
+
+**Drawbacks que la descartaron**:
+- **Pierde la UX del banner expandible** (validada por el usuario en el mockup `/preview-importer`): no hay lista de descartes para expandir, solo un count + link al audit log. Bajar UX para ganar ~12 KB no se justifica.
+- **Forensics requiere join con `audit_log`**: para responder "qué filas fueron descartadas en este presupuesto" hay dos lecturas. En la opción nested elegida es un sólo read del jsonb.
+- **`warningsCount` puede quedar stale**: si alguien edita las `notas` de items y remueve el prefix `[import]`, el contador queda mintiendo y nadie se entera.
+- **Audit log como single-source-of-truth para descartes**: si el audit log se trunca o un retention policy lo borra, perdemos visibility a los descartes para siempre.
+- **`confirmar-import` action necesitaría query extra** para reconstruir descripción del audit log con detalle de warnings (qué tipos predominan, etc.).
+
+**Cuándo revisar**: si los costs de jsonb storage se vuelven preocupantes (e.g., 10k presupuestos × ~15 KB = 150 MB sólo en `import_metadata`), o si el banner expandible cambia su UX para ya no mostrar la lista (e.g., siempre va a una pantalla dedicada de auditoría), entonces minimal vuelve a ser viable.
+
+### 11.8 Layout `/obras/importar` — two-column (descartada en Task 22)
+
+Layout en dos columnas md+ (`grid md:grid-cols-2`): izquierda persistente con Dropzone + FormMetadatosObra, derecha con PreviewSummary o placeholder. El admin podría llenar el form en paralelo a inspeccionar el archivo. Footer no-sticky.
+
+**Drawbacks que la descartaron**:
+- **Asunción de "parallel intent" no validada**: el flujo real de Macna es secuencial (subir → ver qué hay → corregir metadatos → confirmar). La "libertad" de llenar form mientras se mira preview rara vez se ejerce, haciendo la columna doble overengineered para el flow real.
+- **Columnas crecen desparejas**: si el FormMetadatosObra gana campos, la izquierda se vuelve más alta que la derecha, creando whitespace incómodo.
+- **Footer no-sticky se pierde**: en viewports cortos el botón "Importar" sale del viewport mientras se edita el form. El admin tiene que scrollear para encontrarlo.
+- **Re-upload flashea skeleton en la derecha** que lee como bug si el parseo es rápido.
+- **Más responsive complexity**: stack a single column en mobile cambia el orden visual (dropzone → form → preview), perdiendo la promesa "ambos visibles" del approach.
+
+**Cuándo revisar**: si Macna crece y un admin tiene que importar muchas obras seguido, el form persistente puede ahorrar context switching. Reevaluar después del piloto.
+
+### 11.9 Layout `/obras/importar` — stepper 3-pasos (descartada en Task 22)
+
+Stepper visible arriba con 3 cards apilados (Subir / Revisar / Confirmar). Step 1 y 2 colapsan a summary cuando se completan. Step 3 desbloquea reactivamente cuando los required del form están llenos.
+
+**Drawbacks que la descartaron**:
+- **Patrón "stepper" desconocido para admin no técnico**: agrega complejidad cognitiva sin reducir clicks reales (el conteo del happy path es idéntico al de A — 3 clicks + form-fill).
+- **Tiny-edit friction (dealbreaker)**: cambiar el archivo en Step 1 colapsa y resetea Step 2 — toda la data del form se pierde sin warning. Para un usuario que solo quería confirmar el nombre del archivo, es un trap.
+- **Step 3 desbloquea silenciosamente** sin scroll-to o toast — el admin puede llenar todos los campos y no notar que el botón apareció debajo del fold.
+- **Re-upload sin confirmación** borra todo lo ingresado.
+- **No "Next" button explícito** entre steps — la transición automática es eficiente en happy path pero confunde al user que quiere pausar y revisar antes de avanzar.
+- **3 cards apilados en estados distintos** (activo / colapsado / locked) puede ser ambiguo — usuarios pueden no entender si los pasos anteriores siguen interactivos.
+
+**Cuándo revisar**: si el flow crece a más de 3-4 pasos lógicos (e.g., import + asignar permisos + notificar cliente + confirmar), un wizard explícito empieza a justificarse. Para el caso actual (subir → revisar → confirmar) es over-engineering.
+
+### 11.10 Layout elegido: full-width single column + 3 mitigaciones
+
+**Aproach A (full-width single column)** elegido en Task 22 con tres ajustes que mitigan sus drawbacks principales:
+
+1. **Sin sticky footer**: el botón "Importar N items" va al final de la card del Form, en su espacio natural. Mitiga "sticky bar oculta último input". Acepta el scroll natural — es el comportamiento esperado en formularios largos.
+2. **Warning de cotización inline en el campo del Form**: si `cotizacionDetectada === null`, mostrar warning **dentro del campo `cotizacionUsd`** de `FormMetadatosObra` (no en `PreviewSummary`). `PreviewSummary` muestra la cotización detectada como dato informativo, sin warning. Mitiga "warning y campo separados por una card de distancia".
+3. **Dialog de confirmación al "Quitar"**: si hay metadatos parcialmente llenos al apretar "Quitar" en el Dropzone, abre dialog "¿Descartar progreso? Los datos del formulario se perderán." Mitiga "reset abrupto sin warning".
+
+Justificación de la elección sobre B y C:
+- Match con mental model: el flow es lineal (subir → revisar → confirmar), single-column lo refleja sin patrones extra.
+- Menos LOC para mantener: condicional render secuencial, sin grid responsive ni lógica de stepper.
+- Mobile equivalente: el layout no cambia su orden conceptual entre mobile y desktop (todo siempre vertical lineal).
+
 ---
 
 ## 12. Anexos

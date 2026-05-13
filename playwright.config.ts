@@ -1,4 +1,8 @@
 import { defineConfig } from '@playwright/test';
+import { config as dotenvConfig } from 'dotenv';
+
+// Load .env.local so DATABASE_URL and other env vars are available in tests
+dotenvConfig({ path: '.env.local' });
 
 export default defineConfig({
   testDir: './tests/e2e',
