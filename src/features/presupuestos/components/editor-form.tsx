@@ -61,7 +61,9 @@ export function EditorForm(props: Props) {
   });
 
   const dirty = methods.formState.isDirty;
-  const disabled = props.initialEstado !== 'borrador' || stale;
+  // Operador no puede editar mientras import_pendiente=true (espera confirmación del admin).
+  const operadorBloqueado = props.userRol === 'operador' && props.importPendiente;
+  const disabled = props.initialEstado !== 'borrador' || stale || operadorBloqueado;
 
   async function save() {
     if (disabled) return;
