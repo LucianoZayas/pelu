@@ -134,26 +134,32 @@ export function ImportarObraExistenteClient(props: Props) {
   const isReview = phase === 'review' || phase === 'committing';
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="px-8 py-7 max-w-[1280px]">
       <Toaster />
 
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="mb-7 flex items-center gap-3">
         <Link
           href={`/obras/${props.obraId}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronLeft className="size-4" aria-hidden />
-          Volver a {props.obraNombre}
+          {props.obraNombre}
         </Link>
-        <h1 className="text-2xl font-semibold">
-          Importar presupuesto a {props.obraCodigo}
-        </h1>
+        <span className="text-muted-foreground/40">/</span>
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/85 mb-0.5">
+            IMPORTAR · {props.obraCodigo}
+          </p>
+          <h1 className="text-[26px] font-semibold tracking-tight leading-tight text-foreground">
+            Importar presupuesto desde Excel
+          </h1>
+        </div>
       </div>
 
       {/* Caso info banner */}
       {props.caso === 'reemplazar_borrador' && (
-        <Alert>
+        <Alert className="mb-5">
           <AlertCircle className="size-4" />
           <AlertTitle>Esta obra ya tiene un presupuesto borrador</AlertTitle>
           <AlertDescription>
@@ -163,7 +169,7 @@ export function ImportarObraExistenteClient(props: Props) {
         </Alert>
       )}
       {props.caso === 'crear_adicional' && (
-        <Alert>
+        <Alert className="mb-5">
           <AlertCircle className="size-4" />
           <AlertTitle>Esta obra tiene presupuestos firmados</AlertTitle>
           <AlertDescription>
@@ -181,14 +187,14 @@ export function ImportarObraExistenteClient(props: Props) {
 
       {/* Error general */}
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="mt-3 text-[13px] text-destructive">
           {error}
         </p>
       )}
 
       {/* Preview — solo en fase review/committing */}
       {isReview && preview && (
-        <>
+        <div className="mt-6 space-y-5">
           <PreviewSummary
             itemsImportados={preview.items.length}
             itemsConWarning={
@@ -204,7 +210,7 @@ export function ImportarObraExistenteClient(props: Props) {
           />
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-1">
             <Button
               onClick={handleImportClick}
               disabled={isCommitting}
@@ -220,12 +226,12 @@ export function ImportarObraExistenteClient(props: Props) {
             </Button>
             <Link
               href={`/obras/${props.obraId}`}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancelar
             </Link>
           </div>
-        </>
+        </div>
       )}
 
       {/* Pre-flight dialog — reemplazar_borrador */}

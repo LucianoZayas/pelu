@@ -160,19 +160,27 @@ export function ImportarClient() {
   const totalProyectado = preview ? deriveTotalProyectado(preview.items) : 0;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="px-8 py-7 max-w-[1280px]">
       <Toaster />
 
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="mb-7 flex items-center gap-3">
         <Link
           href="/obras"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
         >
           <ChevronLeft className="size-4" aria-hidden />
-          Volver
+          Obras
         </Link>
-        <h1 className="text-2xl font-semibold">Importar presupuesto desde Excel</h1>
+        <span className="text-muted-foreground/40">/</span>
+        <div>
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/85 mb-0.5">
+            IMPORTAR
+          </p>
+          <h1 className="text-[26px] font-semibold tracking-tight leading-tight text-foreground">
+            Nueva obra desde Excel
+          </h1>
+        </div>
       </div>
 
       {/* Dropzone */}
@@ -183,14 +191,14 @@ export function ImportarClient() {
 
       {/* Error general */}
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="mt-3 text-[13px] text-destructive">
           {error}
         </p>
       )}
 
       {/* Preview y formulario — solo en fase review/committing */}
       {(['review', 'committing'] as Phase[]).includes(phase) && preview && metadatos && (
-        <>
+        <div className="mt-6 space-y-5">
           {/* PreviewSummary */}
           <PreviewSummary
             itemsImportados={preview.items.length}
@@ -205,9 +213,9 @@ export function ImportarClient() {
           />
 
           {/* FormMetadatosObra */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Datos de la obra</CardTitle>
+          <Card className="shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.08)]">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-[15px] font-semibold">Datos de la obra</CardTitle>
             </CardHeader>
             <CardContent>
               <FormMetadatosObra
@@ -224,7 +232,7 @@ export function ImportarClient() {
           </Card>
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-1">
             <Button
               onClick={handleSubmit}
               disabled={!isSubmitEnabled || isCommitting}
@@ -240,12 +248,12 @@ export function ImportarClient() {
             </Button>
             <Link
               href="/obras"
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-[13px] text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancelar
             </Link>
           </div>
-        </>
+        </div>
       )}
 
       {/* Confirm discard dialog */}
