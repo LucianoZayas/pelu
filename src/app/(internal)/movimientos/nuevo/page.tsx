@@ -10,9 +10,19 @@ import { asc, eq } from 'drizzle-orm';
 import { MovimientoFormStepper } from '@/features/movimientos/components/movimiento-form-stepper';
 import { PageHeader } from '@/components/page-header';
 
-export default async function Page() {
+type SearchParamsRaw = Promise<Record<string, string | string[] | undefined>>;
+
+function asString(v: string | string[] | undefined): string | undefined {
+  if (Array.isArray(v)) return v[0];
+  return v;
+}
+
+export default async function Page({ searchParams }: { searchParams: SearchParamsRaw }) {
   const user = await requireSession();
   if (user.rol !== 'admin' && user.rol !== 'operador') redirect('/obras');
+
+  const sp = await searchParams;
+  const obraIdPreset = asString(sp.obra);
 
   const [conceptos, cuentas, obras, partes, proveedores] = await Promise.all([
     listarConceptosActivos(),
@@ -21,6 +31,11 @@ export default async function Page() {
     listarPartesActivas(),
     db.select().from(proveedor).where(eq(proveedor.activo, true)).orderBy(asc(proveedor.nombre)),
   ]);
+
+  // Si el query param trae una obra válida, la pre-seleccionamos.
+  const obraIdInicial = obraIdPreset && obras.some((o) => o.id === obraIdPreset)
+    ? obraIdPreset
+    : undefined;
 
   return (
     <div className="px-8 py-7 max-w-[1280px]">
@@ -43,6 +58,7 @@ export default async function Page() {
         obras={obras.map((o) => ({ id: o.id, codigo: o.codigo, nombre: o.nombre }))}
         partes={partes.map((p) => ({ id: p.id, nombre: p.nombre, tipo: p.tipo }))}
         proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+        obraIdInicial={obraIdInicial}
       />
     </div>
   );

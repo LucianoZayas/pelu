@@ -41,6 +41,8 @@ type Props = {
   obras: ObraOption[];
   partes: ParteOption[];
   proveedores: ProveedorOption[];
+  // Si viene desde /obras/[id]/flujo, preselecciona esa obra.
+  obraIdInicial?: string;
 };
 
 type TipoOp = 'entrada' | 'salida' | 'transferencia';
@@ -72,7 +74,7 @@ const TIPO_META: Record<TipoOp, { Icon: typeof ArrowDownToLine; label: string; d
   },
 };
 
-export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, proveedores }: Props) {
+export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, proveedores, obraIdInicial }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -89,7 +91,7 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
   const [monto, setMonto] = useState('');
   const [montoDestino, setMontoDestino] = useState('');
   const [cotizacion, setCotizacion] = useState('');
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useState(obraIdInicial ?? '');
   const [proveedorId, setProveedorId] = useState('');
   const [parteOrigenId, setParteOrigenId] = useState('');
   const [parteDestinoId, setParteDestinoId] = useState('');
@@ -112,9 +114,12 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
       .filter((c) => !search || c.codigo.toLowerCase().includes(search) || c.nombre.toLowerCase().includes(search));
   }, [conceptos, tipoOp, conceptoSearch]);
 
-  // Auto-set no-recuperable cuando se elige un concepto que lo marca por default.
+  // Cuando cambia el concepto, sincronizamos esNoRecuperable con el default del
+  // concepto nuevo. Si el concepto lo marca true, se prende (y el checkbox queda
+  // disabled). Si lo marca false, se apaga (y el usuario puede prenderlo manual).
+  // Antes el effect solo prendía pero nunca apagaba, lo que dejaba el flag pegado.
   useEffect(() => {
-    if (concepto?.esNoRecuperable) setEsNoRecuperable(true);
+    if (concepto) setEsNoRecuperable(concepto.esNoRecuperable);
   }, [concepto]);
 
   function elegirTipo(t: TipoOp) {

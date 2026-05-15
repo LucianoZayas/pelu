@@ -59,7 +59,20 @@ export async function crearPresupuesto(input: NuevoPresupuestoInput): Promise<Re
 export async function guardarPresupuesto(input: GuardarPresupuestoInput): Promise<Result> {
   const admin = await requireRole('admin');
   const parsed = guardarPresupuestoSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
+  if (!parsed.success) {
+    // Mapear el primer issue a un mensaje humano útil. Cuando viene de un item
+    // (path: ['items', N, 'campo']), incluimos número de fila para que el
+    // usuario sepa qué editar.
+    const first = parsed.error.issues[0];
+    const path = first?.path ?? [];
+    let humano = first?.message ?? 'Datos inválidos';
+    if (path[0] === 'items' && typeof path[1] === 'number') {
+      const fila = (path[1] as number) + 1;
+      const campo = path[2] ? String(path[2]) : '';
+      humano = `Fila ${fila}${campo ? ` · campo "${campo}"` : ''}: ${first.message}`;
+    }
+    return { ok: false, error: humano, code: 'VALIDATION' };
+  }
 
   const p = await getPresupuesto(parsed.data.presupuestoId);
   if (!p) return { ok: false, error: 'Presupuesto no encontrado' };
@@ -141,6 +154,13 @@ export async function firmarPresupuesto(presupuestoId: string, version: number):
   if (!p) return { ok: false, error: 'No existe' };
   if (p.estado === 'firmado') return { ok: false, error: 'Ya estaba firmado' };
   if (p.estado === 'cancelado') return { ok: false, error: 'Está cancelado' };
+  if (p.importPendiente) {
+    return {
+      ok: false,
+      error: 'Confirmá la importación antes de firmar. Hay items pendientes de revisión.',
+      code: 'IMPORT_PENDIENTE',
+    };
+  }
 
   // Calcular totales para snapshot.
   const items = await getItemsConRubros(presupuestoId);
@@ -150,8 +170,11 @@ export async function firmarPresupuesto(presupuestoId: string, version: number):
     subtotalCliente: D(item.precioUnitarioCliente).times(item.cantidad),
   })));
 
+  // Defensa en profundidad: si por alguna razón llega importPendiente=true acá,
+  // lo reseteamos junto con firmar para no dejar el estado inconsistente.
   const updated = await db.update(presupuesto).set({
     estado: 'firmado', fechaFirma: new Date(),
+    importPendiente: false,
     totalCostoCalculado: toDb(tot.totalCosto),
     totalClienteCalculado: toDb(tot.totalCliente),
     version: version + 1,
