@@ -120,6 +120,19 @@ CI ya tiene un job condicional gateado por `vars.RUN_INTEGRATION` que está apag
 
 ---
 
+## 9bis. Supabase Storage bucket `comprobantes` ⏳ PENDIENTE
+
+Necesario para que los movimientos puedan adjuntar comprobante. El schema ya tiene la columna `movimiento.comprobante_url`, pero falta la infraestructura de Storage:
+
+- [ ] **9bis.1 Crear bucket privado `comprobantes` en Supabase** (Dashboard → Storage → New bucket → Private).
+- [ ] **9bis.2 Crear policies del bucket** (Storage → Policies):
+  - `INSERT`: usuarios autenticados con rol `admin` u `operador` (joinear contra `usuario` table).
+  - `SELECT`: solo signed URLs (TTL ~1h).
+  - `DELETE`: solo `admin`.
+- [ ] **9bis.3 Smoke**: desde el form de movimiento subir una imagen y verificar que vive en `comprobantes/movimientos/<id>/<filename>` y que se accede vía signed URL.
+
+Esto desbloquea el feature de comprobantes (hoy el campo existe pero sin UI de upload).
+
 ## 9. Manual smoke testing ⏳ PENDIENTE
 
 Los implementers no pueden clickear UI, así que estas verificaciones siguen sin ejecutar:
@@ -129,6 +142,7 @@ Los implementers no pueden clickear UI, así que estas verificaciones siguen sin
 - [ ] **9.3 Editor de presupuesto Plan 3** — agregar items, cambiar markup, autosave a los 30s, firmar → readonly.
 - [ ] **9.4 Vista cliente Plan 4** — regenerar token, abrir `/cliente/<token>` en incógnito, descargar PDF, probar token inválido → `/cliente/expirado`.
 - [ ] **9.5 Auditoría + export Plan 5** — `/configuracion/auditoria` con filtros, exportar XLSX desde obras y auditoría.
+- [ ] **9.6 Flujo de caja MVP** (2026-05-15) — `pnpm db:migrate` aplicará 0003_flujo_caja contra `macna-dev`. Después: login admin → `/configuracion/cuentas` ver las 4 cuentas seedeadas → `/configuracion/conceptos` ver los 13 conceptos → `/movimientos/nuevo` → cargar 1 ingreso (HO con obra), 1 egreso (sueldo a Dani), 1 transferencia USD→ARS con cotización. Validar que saldos por cuenta se actualizan. Probar anular + restaurar. Login operador → cargar un mov propio, verificar que NO puede editar el de admin, NO ve botón anular.
 
 ---
 

@@ -11,9 +11,11 @@ export const tipoPresupuestoEnum = pgEnum('tipo_presupuesto', ['original', 'adic
 export const estadoPresupuestoEnum = pgEnum('estado_presupuesto', ['borrador', 'firmado', 'cancelado']);
 export const entidadAuditEnum = pgEnum('entidad_audit', [
   'obra', 'presupuesto', 'item_presupuesto', 'usuario', 'cliente_token', 'rubro',
+  'movimiento', 'cuenta', 'concepto_movimiento', 'parte', 'proveedor',
 ]);
 export const accionAuditEnum = pgEnum('accion_audit', [
   'crear', 'editar', 'eliminar', 'firmar', 'cancelar', 'regenerar_token',
+  'anular', 'restaurar',
 ]);
 
 export const usuario = pgTable('usuario', {
@@ -123,8 +125,14 @@ export const auditLog = pgTable('audit_log', {
   timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Stubs F2 — sin UI, solo definición para evitar migración disruptiva.
-export const tipoMovimientoEnum = pgEnum('tipo_movimiento', ['entrada', 'salida']);
+// ---- Flujo de Caja (Fase 2) ----
+
+export const tipoMovimientoEnum = pgEnum('tipo_movimiento', ['entrada', 'salida', 'transferencia']);
+export const tipoConceptoEnum = pgEnum('tipo_concepto', ['ingreso', 'egreso', 'transferencia']);
+export const tipoParteEnum = pgEnum('tipo_parte', [
+  'empresa', 'obra', 'socio', 'empleado', 'proveedor', 'externo',
+]);
+export const estadoMovimientoEnum = pgEnum('estado_movimiento', ['previsto', 'confirmado', 'anulado']);
 
 export const proveedor = pgTable('proveedor', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -141,22 +149,104 @@ export const cuenta = pgTable('cuenta', {
   nombre: text('nombre').notNull(),
   moneda: monedaEnum('moneda').notNull(),
   tipo: text('tipo').notNull(), // 'caja' | 'banco'
+  orden: integer('orden').notNull().default(0),
+  notas: text('notas'),
   activo: boolean('activo').notNull().default(true),
 });
 
+export const conceptoMovimiento = pgTable('concepto_movimiento', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  codigo: text('codigo').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  tipo: tipoConceptoEnum('tipo').notNull(),
+  requiereObra: boolean('requiere_obra').notNull().default(false),
+  requiereProveedor: boolean('requiere_proveedor').notNull().default(false),
+  esNoRecuperable: boolean('es_no_recuperable').notNull().default(false),
+  orden: integer('orden').notNull().default(0),
+  activo: boolean('activo').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  activoOrdenIdx: index('concepto_movimiento_activo_orden_idx').on(t.activo, t.orden),
+}));
+
+export const parte = pgTable('parte', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tipo: tipoParteEnum('tipo').notNull(),
+  nombre: text('nombre').notNull(),
+  obraId: uuid('obra_id').references(() => obra.id),
+  proveedorId: uuid('proveedor_id').references(() => proveedor.id),
+  datos: jsonb('datos'),
+  activo: boolean('activo').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  tipoActivoIdx: index('parte_tipo_activo_idx').on(t.tipo).where(sql`activo = true`),
+  obraUniqIdx: uniqueIndex('parte_obra_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL`),
+  proveedorUniqIdx: uniqueIndex('parte_proveedor_uniq').on(t.proveedorId).where(sql`proveedor_id IS NOT NULL`),
+}));
+
+// `cuentaId` actúa como cuenta de origen para ingreso/egreso/transferencia.
+// `cuentaDestinoId` aplica solo en transferencias (otra punta del cambio entre cuentas).
 export const movimiento = pgTable('movimiento', {
   id: uuid('id').primaryKey().defaultRandom(),
   tipo: tipoMovimientoEnum('tipo').notNull(),
   fecha: timestamp('fecha', { mode: 'date' }).notNull(),
+  conceptoId: uuid('concepto_id').references(() => conceptoMovimiento.id),
   monto: decimal('monto', { precision: 18, scale: 4 }).notNull(),
   moneda: monedaEnum('moneda').notNull(),
   cotizacionUsd: decimal('cotizacion_usd', { precision: 18, scale: 4 }),
+  montoDestino: decimal('monto_destino', { precision: 18, scale: 4 }),
   cuentaId: uuid('cuenta_id').references(() => cuenta.id),
+  cuentaDestinoId: uuid('cuenta_destino_id').references(() => cuenta.id),
   obraId: uuid('obra_id').references(() => obra.id),
   rubroId: uuid('rubro_id').references(() => rubro.id),
   proveedorId: uuid('proveedor_id').references(() => proveedor.id),
+  parteOrigenId: uuid('parte_origen_id').references(() => parte.id),
+  parteDestinoId: uuid('parte_destino_id').references(() => parte.id),
   descripcion: text('descripcion'),
+  numeroComprobante: text('numero_comprobante'),
   comprobanteUrl: text('comprobante_url'),
+  esNoRecuperable: boolean('es_no_recuperable').notNull().default(false),
+  estado: estadoMovimientoEnum('estado').notNull().default('confirmado'),
+  anuladoMotivo: text('anulado_motivo'),
+  anuladoAt: timestamp('anulado_at', { withTimezone: true }),
+  anuladoBy: uuid('anulado_by').references(() => usuario.id),
+  version: integer('version').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => usuario.id),
-});
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by').references(() => usuario.id),
+}, (t) => ({
+  obraFechaIdx: index('movimiento_obra_fecha_idx').on(t.obraId, t.fecha),
+  cuentaFechaIdx: index('movimiento_cuenta_fecha_idx').on(t.cuentaId, t.fecha),
+  cuentaDestinoFechaIdx: index('movimiento_cuenta_destino_fecha_idx').on(t.cuentaDestinoId, t.fecha).where(sql`cuenta_destino_id IS NOT NULL`),
+  conceptoFechaIdx: index('movimiento_concepto_fecha_idx').on(t.conceptoId, t.fecha),
+  parteOrigenFechaIdx: index('movimiento_parte_origen_fecha_idx').on(t.parteOrigenId, t.fecha).where(sql`parte_origen_id IS NOT NULL`),
+  parteDestinoFechaIdx: index('movimiento_parte_destino_fecha_idx').on(t.parteDestinoId, t.fecha).where(sql`parte_destino_id IS NOT NULL`),
+  estadoIdx: index('movimiento_estado_idx').on(t.estado).where(sql`estado != 'confirmado'`),
+}));
+
+export const conceptoMovimientoRelations = relations(conceptoMovimiento, ({ many }) => ({
+  movimientos: many(movimiento),
+}));
+
+export const parteRelations = relations(parte, ({ one, many }) => ({
+  obra: one(obra, { fields: [parte.obraId], references: [obra.id] }),
+  proveedor: one(proveedor, { fields: [parte.proveedorId], references: [proveedor.id] }),
+  movimientosOrigen: many(movimiento, { relationName: 'mov_parte_origen' }),
+  movimientosDestino: many(movimiento, { relationName: 'mov_parte_destino' }),
+}));
+
+export const movimientoRelations = relations(movimiento, ({ one }) => ({
+  concepto: one(conceptoMovimiento, { fields: [movimiento.conceptoId], references: [conceptoMovimiento.id] }),
+  cuenta: one(cuenta, { fields: [movimiento.cuentaId], references: [cuenta.id], relationName: 'mov_cuenta_origen' }),
+  cuentaDestino: one(cuenta, { fields: [movimiento.cuentaDestinoId], references: [cuenta.id], relationName: 'mov_cuenta_destino' }),
+  obra: one(obra, { fields: [movimiento.obraId], references: [obra.id] }),
+  rubro: one(rubro, { fields: [movimiento.rubroId], references: [rubro.id] }),
+  proveedor: one(proveedor, { fields: [movimiento.proveedorId], references: [proveedor.id] }),
+  parteOrigen: one(parte, { fields: [movimiento.parteOrigenId], references: [parte.id], relationName: 'mov_parte_origen' }),
+  parteDestino: one(parte, { fields: [movimiento.parteDestinoId], references: [parte.id], relationName: 'mov_parte_destino' }),
+  creadoPor: one(usuario, { fields: [movimiento.createdBy], references: [usuario.id], relationName: 'mov_creado_por' }),
+  modificadoPor: one(usuario, { fields: [movimiento.updatedBy], references: [usuario.id], relationName: 'mov_modificado_por' }),
+  anuladoPor: one(usuario, { fields: [movimiento.anuladoBy], references: [usuario.id], relationName: 'mov_anulado_por' }),
+}));

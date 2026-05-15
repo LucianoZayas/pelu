@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import { db } from './client';
-import { usuario, rubro } from './schema';
+import { usuario, rubro, cuenta, conceptoMovimiento, parte } from './schema';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { RUBROS_BASE } from './seed-data';
+import { RUBROS_BASE, CUENTAS_BASE, CONCEPTOS_BASE, PARTES_BASE } from './seed-data';
 import { eq } from 'drizzle-orm';
 
 async function seedRubros() {
@@ -17,6 +17,34 @@ async function seedRubros() {
     }
   }
   console.log('✓ Rubros sembrados');
+}
+
+async function seedCuentas() {
+  for (const c of CUENTAS_BASE) {
+    const [exists] = await db.select().from(cuenta).where(eq(cuenta.nombre, c.nombre)).limit(1);
+    if (exists) continue;
+    await db.insert(cuenta).values(c);
+  }
+  console.log('✓ Cuentas sembradas');
+}
+
+async function seedConceptos() {
+  for (const c of CONCEPTOS_BASE) {
+    const [exists] = await db.select().from(conceptoMovimiento).where(eq(conceptoMovimiento.codigo, c.codigo)).limit(1);
+    if (exists) continue;
+    await db.insert(conceptoMovimiento).values(c);
+  }
+  console.log('✓ Conceptos de movimiento sembrados');
+}
+
+async function seedPartes() {
+  for (const p of PARTES_BASE) {
+    const [exists] = await db.select().from(parte)
+      .where(eq(parte.nombre, p.nombre)).limit(1);
+    if (exists) continue;
+    await db.insert(parte).values(p);
+  }
+  console.log('✓ Partes fijas sembradas');
 }
 
 async function seedAdmin() {
@@ -53,6 +81,9 @@ async function seedAdmin() {
 
 async function main() {
   await seedRubros();
+  await seedCuentas();
+  await seedConceptos();
+  await seedPartes();
   await seedAdmin();
   console.log('Seed completado.');
   process.exit(0);

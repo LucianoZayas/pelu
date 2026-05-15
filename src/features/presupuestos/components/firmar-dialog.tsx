@@ -4,14 +4,27 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { Button } from '@/components/ui/button';
 import { firmarPresupuesto } from '../actions';
 
-export function FirmarDialog({ presupuestoId, version, dirty }: { presupuestoId: string; version: number; dirty: boolean }) {
+export function FirmarDialog({
+  presupuestoId, version, dirty, importPendiente = false,
+}: { presupuestoId: string; version: number; dirty: boolean; importPendiente?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
 
+  const blockedReason = importPendiente
+    ? 'Confirmá la importación primero'
+    : dirty
+      ? 'Guardá primero'
+      : null;
+  const blocked = blockedReason !== null;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button disabled={dirty}>{dirty ? 'Guardá primero' : 'Firmar presupuesto'}</Button>} />
+      <DialogTrigger render={
+        <Button disabled={blocked} title={blockedReason ?? undefined}>
+          {blockedReason ?? 'Firmar presupuesto'}
+        </Button>
+      } />
       <DialogContent>
         <DialogTitle>Firmar presupuesto</DialogTitle>
         <p className="text-sm text-muted-foreground">Una vez firmado, no se puede editar. Si hay errores, hay que cancelarlo y reemitir.</p>

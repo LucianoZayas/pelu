@@ -1,8 +1,12 @@
 import { db } from '@/db/client';
 import { auditLog } from '@/db/schema';
 
-type Entidad = 'obra' | 'presupuesto' | 'item_presupuesto' | 'usuario' | 'cliente_token' | 'rubro';
-type Accion = 'crear' | 'editar' | 'eliminar' | 'firmar' | 'cancelar' | 'regenerar_token';
+type Entidad =
+  | 'obra' | 'presupuesto' | 'item_presupuesto' | 'usuario' | 'cliente_token' | 'rubro'
+  | 'movimiento' | 'cuenta' | 'concepto_movimiento' | 'parte' | 'proveedor';
+type Accion =
+  | 'crear' | 'editar' | 'eliminar' | 'firmar' | 'cancelar' | 'regenerar_token'
+  | 'anular' | 'restaurar';
 
 export interface LogAuditInput {
   entidad: Entidad;

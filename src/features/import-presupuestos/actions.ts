@@ -128,6 +128,12 @@ export async function cancelarImportAction({
     const [p] = await db.select().from(presupuesto).where(eq(presupuesto.id, presupuestoId)).limit(1);
     if (!p) return { ok: false, error: 'Presupuesto no encontrado' };
     if (!p.importPendiente) return { ok: false, error: 'No es una importación pendiente' };
+    // Defensa crítica: nunca borrar un presupuesto firmado vía cancel-import.
+    // Si llega acá con estado='firmado' es por estado inconsistente histórico
+    // (bug §3.1.5 ya arreglado en firmar). Mejor rechazar que romper integridad.
+    if (p.estado === 'firmado') {
+      return { ok: false, error: 'No se puede cancelar la importación de un presupuesto firmado' };
+    }
 
     let redirectTo = '';
     await db.transaction(async (tx) => {

@@ -43,11 +43,22 @@ type Props = {
   userRol: 'admin' | 'operador';
 };
 
+// Una fila se considera "vacía" si no tiene descripción Y no se editaron
+// los campos numéricos clave. Permite al usuario agregar filas por error
+// y que se descarten silenciosamente al guardar (bug §3.1.6).
+function esItemVacio(it: Item): boolean {
+  const sinDesc = !it.descripcion || it.descripcion.trim() === '';
+  const sinMontos = (!it.cantidad || it.cantidad === '0' || it.cantidad === '')
+    && (!it.costoUnitario || it.costoUnitario === '0' || it.costoUnitario === '');
+  return sinDesc && sinMontos;
+}
+
 export function EditorForm(props: Props) {
   const router = useRouter();
   const [version, setVersion] = useState(props.initialVersion);
   const [stale, setStale] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const esObraNueva = props.presupuestoTipo === 'original';
 
@@ -68,8 +79,15 @@ export function EditorForm(props: Props) {
   async function save() {
     if (disabled) return;
     setSaving(true);
+    setSaveError(null);
     const v = methods.getValues();
-    const items = v.rubros.flatMap((r) => r.items.map((it, idx) => ({ ...it, rubroId: r.rubroId, orden: idx })));
+    // Auto-discard de filas vacías: si el usuario agregó "+ Agregar item" pero
+    // no escribió descripción ni montos, se descarta silenciosamente.
+    const items = v.rubros.flatMap((r) =>
+      r.items
+        .filter((it) => !esItemVacio(it))
+        .map((it, idx) => ({ ...it, rubroId: r.rubroId, orden: idx }))
+    );
     const r = await guardarPresupuesto({
       presupuestoId: props.presupuestoId,
       version,
@@ -87,7 +105,7 @@ export function EditorForm(props: Props) {
     } else if (r.code === 'STALE_VERSION') {
       setStale(true);
     } else {
-      alert(r.error);
+      setSaveError(r.error);
     }
   }
 
@@ -161,6 +179,22 @@ export function EditorForm(props: Props) {
 
       <TotalesFooter monedaBase={props.monedaBase} />
 
+      {saveError && (
+        <div
+          role="alert"
+          className="mb-3 rounded-lg border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-[13px] flex items-start gap-2"
+        >
+          <span className="font-semibold shrink-0">No se pudo guardar:</span>
+          <span>{saveError}</span>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="ml-auto text-red-700 hover:text-red-900 text-[18px] leading-none"
+            aria-label="Cerrar"
+          >×</button>
+        </div>
+      )}
+
       {/* Action toolbar */}
       <div className="sticky bottom-[61px] z-10 flex items-center gap-2 border-t bg-card/95 px-0 py-3.5 backdrop-blur-sm">
         <Button
@@ -172,7 +206,12 @@ export function EditorForm(props: Props) {
         </Button>
         {props.initialEstado === 'borrador' && (
           <>
-            <FirmarDialog presupuestoId={props.presupuestoId} version={version} dirty={dirty} />
+            <FirmarDialog
+              presupuestoId={props.presupuestoId}
+              version={version}
+              dirty={dirty}
+              importPendiente={props.importPendiente}
+            />
             <CancelarDialog presupuestoId={props.presupuestoId} version={version} />
           </>
         )}

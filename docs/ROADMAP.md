@@ -13,7 +13,7 @@
 | Bloque | Estado | Prioridad |
 |---|---|---|
 | [1. Cierre del piloto](#1-cierre-del-piloto-p0) | en curso | P0 |
-| [2. Gap funcional vs Excel actual de Macna](#2-gap-funcional-vs-excel-actual) | sin iniciar | P1 |
+| [2. Gap funcional vs Excel actual de Macna](#2-gap-funcional-vs-excel-actual) | flujo caja MVP hecho · P&L, proyecciones, payroll pendiente | P1 |
 | [3. Gaps técnicos del producto](#3-gaps-técnicos-del-producto) | sin iniciar | P1–P2 |
 | [4. Polish / UX](#4-polish--ux) | sin iniciar | P2 |
 | [5. Infraestructura / Seguridad / Observabilidad](#5-infraestructura--seguridad--observabilidad) | sin iniciar | P1–P2 |
@@ -120,27 +120,37 @@ Cuando cierre 1.1 quedan pendientes (detallados en el spec § 10):
 
 Lo que **Macna ya hace en Sheets pero el sistema todavía no cubre**. Identificado mirando las hojas del XLSX. Cada bloque necesita un brainstorming + spec + plan propios.
 
-### 2.1 Flujo de caja por obra **[P1 · F2]**
+### 2.1 + 2.2 Flujo de caja MVP **[P1 · F2 · MVP HECHO 2026-05-15]**
 
-**Qué hace el Excel**: hojas `F.c - LOZANO` y `Copia de FLUJO DE CAJA - JUNCAL` registran entradas/salidas por obra con cuenta (caja USD / caja física ARS / bancos), fecha, concepto, origen/destinatario, montos en USD y ARS.
+**Estado**: ✅ MVP completo mergeable. Spec: `docs/superpowers/specs/2026-05-15-flujo-caja-design.md`. Branch `feat/flujo-caja` (3 commits + foundations).
 
-**Qué tiene el sistema**: el schema `movimiento` ya existe (`src/db/schema.ts:142`) con `tipo`, `monto`, `moneda`, `cuentaId`, `obraId`, `rubroId`, `proveedorId`, `descripcion`, `comprobanteUrl`. **No tiene UI**.
+**Implementado**:
+- Migration 0003: tablas `parte`, `concepto_movimiento` + extensión de `movimiento` (concepto_id, parte_origen/destino, cuenta_destino, monto_destino, estado, version, anulado_*). CHECK constraints para transferencias y refs `parte ↔ obra/proveedor`.
+- Seed: 4 cuentas, 13 conceptos del Excel real, 6 partes fijas (Macna + Cris + Frank + Dani + Financiera + Consultora).
+- ABM cuentas (`/configuracion/cuentas`) con saldo en vivo calculado SQL.
+- ABM conceptos (`/configuracion/conceptos`) con tipo + flags requerimiento.
+- ABM partes (`/configuracion/partes`) con filtros por tipo. Las tipo obra/proveedor se autogeneran (TODO: trigger desde Obras y Proveedores — ver §3.0bis abajo).
+- Movimientos CRUD (`/movimientos`, `/movimientos/nuevo`): form dinámico por concepto, transferencias con cambio de moneda, anular/restaurar (admin), optimistic lock con `version`.
+- Vistas: `/movimientos` con saldos + filtros URL, `/obras/[id]/flujo` con resumen ingresos/egresos/saldo neto USD+ARS, `/flujo/empresa` con movimientos sin obra.
+- Sidebar extendido. Audit log en cada server action.
 
-**Por implementar**:
-- ABM de cuentas (caja USD, caja física ARS, cuentas bancarias).
-- ABM de proveedores/contratistas.
-- ABM de movimientos por obra (entrada/salida).
-- Upload de comprobantes a Supabase Storage.
-- Vista "Flujo de caja de obra X" con balance corriente, agrupado por concepto.
+**Iteración UX 2026-05-15 PM** (✅ hecha en branch `feat/flujo-caja`):
+- /movimientos y /flujo/empresa eran redundantes → eliminado /flujo/empresa, filtro 'Sin obra' en /movimientos.
+- /flujo ahora es un dashboard interactivo (KPIs período, saldos detalle, gráfico recharts ARS/USD, breakdown top 5 conceptos, actividad reciente) con PeriodoSelector (Mes/Mes pasado/Últimos 30/Año/personalizado).
+- /movimientos/nuevo: form lineal reemplazado por stepper de 3 pasos (Tipo → Datos → Detalles) con preview en vivo lateral, búsqueda searchable de concepto, atajos teclado.
 
-### 2.2 Flujo de caja general empresa **[P1 · F2]**
+**Quedó out-of-scope del MVP (sub-tareas futuras)**:
+- **Upload de comprobantes a Supabase Storage**: campo `comprobante_url` existe pero sin UI de upload. Necesita: bucket `comprobantes` privado, policy de Storage, signed URLs, componente `<ComprobanteUpload>`.
+- **Auto-creación de `parte` tipo obra al crear obra**: hoy el form de movimiento usa `obra_id` directo. Si se quiere filtrar movimientos por "parte origen = obra X", hace falta que cada obra tenga su `parte` espejo. Trigger Postgres o hook en `crearObra` action.
+- **Auto-creación de `parte` tipo proveedor**: idem, al crear proveedor. Y crear ABM `/configuracion/proveedores` (hoy se pueden crear solo desde script o vía SQL).
+- **Tests unit + integration + E2E**: ninguno escrito para movimientos. Casos críticos a cubrir: validación zod por tipo, cálculo de saldos, transferencia balanceada, optimistic lock, permisos operador.
+- **Edición de movimiento existente desde UI**: action `editarMovimiento` existe pero no hay form de edición (solo crear). Reutilizar `MovimientoFormStepper` con valores prellenados + version expected.
+- **Detalle del movimiento (drawer/modal)** con audit log inline.
+- **Dashboard: alertas + resumen top 5 obras**: se postergaron en la iteración UX 2026-05-15. Agregar cuentas en negativo, gastos no recuperables del mes, obras con más actividad.
 
-**Qué hace el Excel**: hoja `MACNA - FLUJO DE CAJA` consolida la caja de toda la empresa, no por obra (sueldos, gastos indirectos, transferencias, aportes de socios).
+### 2.2bis Bug histórico Excel ORIGEN
 
-**Por implementar**:
-- Movimientos no asociados a obra (`obra_id` nullable ya está).
-- Vista "Caja general" con saldos por cuenta + filtros temporales.
-- Conciliación entre saldo esperado y saldo real.
+Detectado al explorar el XLSX: la columna ORIGEN en `MACNA - FLUJO DE CAJA` tiene fechas serializadas en lugar de nombres (corrupción Sheets). El sistema nuevo previene esto por integridad referencial. Histórico NO se importa automáticamente — el usuario empieza a cargar desde fecha de cutover; Sheets queda como referencia.
 
 ### 2.3 Presupuestos adicionales (validar que ya funciona) **[P1 · F1+]**
 
