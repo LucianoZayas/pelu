@@ -51,21 +51,24 @@ const TIPO_CONCEPTO_PARA_OP: Record<TipoOp, 'ingreso' | 'egreso' | 'transferenci
   transferencia: 'transferencia',
 };
 
-const TIPO_META: Record<TipoOp, { Icon: typeof ArrowDownToLine; label: string; desc: string; bg: string; border: string; text: string; hover: string }> = {
+const TIPO_META: Record<TipoOp, { Icon: typeof ArrowDownToLine; label: string; desc: string; bg: string; border: string; text: string; hoverBg: string; hoverBorder: string }> = {
   entrada: {
     Icon: ArrowDownToLine, label: 'Ingreso',
     desc: 'Cobros, honorarios, beneficios — dinero que entra',
-    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800', hover: 'hover:bg-emerald-100',
+    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800',
+    hoverBg: 'hover:bg-emerald-50/70', hoverBorder: 'hover:border-emerald-300',
   },
   salida: {
     Icon: ArrowUpFromLine, label: 'Egreso',
     desc: 'Pagos, sueldos, gastos — dinero que sale',
-    bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', hover: 'hover:bg-red-100',
+    bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800',
+    hoverBg: 'hover:bg-red-50/70', hoverBorder: 'hover:border-red-300',
   },
   transferencia: {
     Icon: ArrowLeftRight, label: 'Transferencia',
     desc: 'Mover plata entre cuentas propias (incluye cambio USD ↔ ARS)',
-    bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-800', hover: 'hover:bg-blue-100',
+    bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-800',
+    hoverBg: 'hover:bg-blue-50/70', hoverBorder: 'hover:border-blue-300',
   },
 };
 
@@ -449,7 +452,7 @@ function Step1Tipo({
               className={cn(
                 'rounded-xl border-2 p-5 text-left transition-all',
                 isSelected ? `${meta.bg} ${meta.border}` : 'bg-card border-border',
-                !isSelected && !disabled && `hover:${meta.bg.replace('bg-', 'bg-')} hover:${meta.border} hover:scale-[1.01]`,
+                !isSelected && !disabled && `${meta.hoverBg} ${meta.hoverBorder} hover:scale-[1.01]`,
                 disabled && 'opacity-50 cursor-not-allowed',
               )}
             >
