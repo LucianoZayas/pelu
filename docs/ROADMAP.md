@@ -33,6 +33,18 @@
 
 Lo que falta para que la primera obra real entre al sistema y arranque el "paralelo con Sheets" definido en `docs/cutover-piloto.md`.
 
+### 1.1bis Refinamiento del parser XLSX **[P1 · hecho 2026-05-15]**
+
+Después del primer roundtrip con el XLSX real, el usuario detectó que `192 descartes` era alarmante y que se perdían items reales. Tres mejoras hechas en una sola sesión:
+
+- **Categorización de descartes** (`estructural`/`informativo`/`warning`): los SUBTOTAL/headers/placeholders dejaron de aparecer como warnings y se agrupan como "esperado del Excel". Sólo quedan ~10 warnings reales (orphan costs, #REF!).
+- **Fallback PARCIAL → TOTAL**: si `COSTO TOTAL` está vacío pero `COSTO PARCIAL` tiene valor, se usa parcial (con flag `costo_solo_parcial`). Recupera ~8 items que el parser anterior tiraba (R118 "Techo de chapa", R124-126 MUEBLES, R142 "Bacha lavadero", etc.).
+- **Consolidación de TOTAL MANO DE OBRA**: las ~90 filas descriptivas de mano de obra que no tienen costo individual (la suma vive en una sola fila TOTAL MANO DE OBRA) ahora se importan como **1 item** con todas las descripciones bundleadas en `notas` markdown agrupadas por sub-rubro. Cero pérdida de info, cero trabajo manual.
+
+Doc nuevo: `docs/import-excel-inconsistencias.md` — anota 10 patrones del template Excel de Macna que conviene validar contra otros archivos cuando lleguen (col 15 = USD?, MARMOLERIA con opcion1/opcion2, INSUMOS con #REF!, etc.).
+
+Tests: 84/84 unit (13 suites). Tipos: `DescarteRow.categoria` (`estructural`|`informativo`|`warning`), nuevos `WarningItem.tipo` (`costo_solo_parcial`, `mo_consolidada`, `costo_huerfano`).
+
 ### 1.1 Mapear el XLSX real al importer **[P0 · bloqueante del piloto]**
 
 **Archivo recibido**: `/Users/lzayas/Downloads/MACNA ADMINISTRACION - Lucho (1).xlsx` (584 KB, 8 hojas).
@@ -219,6 +231,12 @@ Bajar movimientos bancarios reales (CSV exportado o API Galicia/Santander/etc.) 
 
 ## 3. Gaps técnicos del producto
 
+### 3.0 Rubros: merge / fusión de duplicados **[P2, descubierto 2026-05-15]**
+
+Al rediseñar `/configuracion/rubros` se ve que conviven duplicados de casing (ej. `Albañilería` del seed con `ALBAÑILERIA` venido del importer Excel). La UI los detecta con chip "duplicado" pero no permite fusionarlos. Implementar `mergeRubros(idA, idB)`: re-asigna `item_presupuesto.rubro_id` de B a A y archiva/borra B. Necesita tx + audit log + verificación de FK. UX: botón "Fusionar con [otro]" en el chip duplicado, dialog con confirm.
+
+También: definir convención de casing (¿UPPER, Title, libre?) — hoy el seed es Title Case (`Demoliciones`, `Albañilería`) pero los imports vienen UPPER. Decidir si normalizar a una sola forma en input.
+
 ### 3.1 Drag-and-drop para reordenar items **[P3 · F1]**
 
 Era nice-to-have de F1 según spec, no se implementó. El editor tiene `useFieldArray` que soporta `move(from, to)`. Estimación baja, pero no bloquea nada.
@@ -268,6 +286,10 @@ Pantalla home para admins con: presupuestos firmados hoy/semana, movimientos car
 ---
 
 ## 4. Polish / UX
+
+### 4.0 Validación del template Excel contra otras obras **[P2, descubierto 2026-05-15]**
+
+`docs/import-excel-inconsistencias.md` lista 10 patrones detectados en el XLSX de prueba (col 15 ambigua, MARMOLERIA con opcion1/opcion2, R106 con números bajos sospechosos, etc.). Cuando lleguen otros Excel reales, revalidar: ¿son **únicos** de ese archivo (ignorar), **recurrentes** (parchear parser), o **errores de Macna** (corregir el template en Sheets)? Documento queda como checklist viva.
 
 ### 4.1 Mobile responsive **[P1]**
 

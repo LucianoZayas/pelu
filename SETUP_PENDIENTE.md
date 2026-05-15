@@ -94,7 +94,10 @@ Archivo de referencia: `/Users/lzayas/Downloads/MACNA ADMINISTRACION - Lucho (1)
 
 **Pendiente**:
 - [ ] **6.1 Smoke manual end-to-end en producción** — login admin → `/obras` → "Nueva obra desde Excel" → subir el XLSX real → revisar preview → confirmar → verificar editor + audit log + total proyectado matchea Sheets (diferencias > $0.01 investigar). Probar también re-import sobre borrador y cancelar.
+  - **Nuevo (2026-05-15)**: validar el nuevo preview categorizado (warnings prominentes, estructural/informativo colapsado) + revisar que el item consolidado "TOTAL MANO DE OBRA" se ve OK en el editor con todas las descripciones en notas.
 - [ ] **6.2 Probar permisos operador** — login con `lucho.2835@macna.local` (creado 2026-05-12, password en memoria `~/.claude/projects/-Users-lzayas-Desktop-Pelu/memory/project_test_credentials.md`) → verificar que NO ve botones de import + que si abre un presupuesto con `import_pendiente=true` ve banner read-only sin botones Confirmar/Cancelar.
+- [ ] **6.3 Probar nuevo /configuracion/rubros** (2026-05-15) — login admin → ver lista de rubros del seed → crear uno con espacio al inicio "  Test " → verificar que aparece chip "espacios" + botón "Normalizar" → clickear y verificar que se renombra a "Test" → archivar y restaurar. También verificar chip "duplicado" si conviven rubros tipo "ALBAÑILERIA" y "Albañilería" en la DB.
+- [ ] **6.4 Probar /obras con fila clickeable** (2026-05-15) — clickear en cualquier columna de la fila (cliente, estado, moneda) y verificar que navega a `/obras/[id]`. También verificar tab/enter desde teclado.
 
 ---
 
