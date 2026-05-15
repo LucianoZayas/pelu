@@ -12,7 +12,10 @@ type Props = {
 };
 
 export function RubroAcordeon({ rubroIdx, rubroNombre, rubrosOptions, disabled, importPendiente }: Props) {
-  const [open, setOpen] = useState(rubroIdx < 3);
+  // Cuando viene de un import recién hecho, expandir TODOS los rubros por defecto
+  // para que el usuario revise cada item sin riesgo de saltearse uno por no
+  // haber expandido el acordeón. En presupuestos normales, abrir los primeros 3.
+  const [open, setOpen] = useState(importPendiente || rubroIdx < 3);
   return (
     <section className="mb-2 overflow-hidden rounded-lg border bg-card">
       <button
