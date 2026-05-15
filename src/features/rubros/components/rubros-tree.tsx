@@ -10,6 +10,8 @@ import {
   ArchiveRestore,
   AlertTriangle,
   Plus,
+  ArrowDownAZ,
+  ListOrdered,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,6 +89,18 @@ function countInactive(nodes: RubroNode[]): number {
   );
 }
 
+/**
+ * Devuelve una copia del árbol ordenada alfabéticamente por nombre,
+ * aplicando el orden recursivamente a cada nivel de hijos. Usa locale 'es-AR'
+ * con sensitivity 'base' para que "Albañilería" y "ALBAÑILERIA" se comparen
+ * sin tener en cuenta tildes ni mayúsculas.
+ */
+function sortTreeAlpha(nodes: RubroNode[]): RubroNode[] {
+  const collator = new Intl.Collator('es-AR', { sensitivity: 'base' });
+  const sorted = [...nodes].sort((a, b) => collator.compare(a.nombre, b.nombre));
+  return sorted.map((n) => ({ ...n, hijos: sortTreeAlpha(n.hijos) }));
+}
+
 export function RubrosTree({
   arbol,
   planos,
@@ -100,8 +114,13 @@ export function RubrosTree({
   const [showInactive, setShowInactive] = useState(false);
   const [editing, setEditing] = useState<{ id: string; nombre: string } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [sortMode, setSortMode] = useState<'manual' | 'alpha'>('manual');
 
   const allNames = useMemo(() => planos.map((p) => p.nombre), [planos]);
+  const arbolOrdenado = useMemo(
+    () => (sortMode === 'alpha' ? sortTreeAlpha(arbol) : arbol),
+    [arbol, sortMode],
+  );
   const totalRubros = countNodes(arbol);
   const inactivosCount = countInactive(arbol);
 
@@ -242,16 +261,40 @@ export function RubrosTree({
 
         {/* Tree */}
         <div className="rounded-xl border bg-card shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] overflow-hidden">
-          <div className="px-5 py-3 border-b bg-muted/30">
+          <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-3">
             <h2 className="text-[14px] font-semibold">Catálogo</h2>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+              onClick={() => setSortMode((m) => (m === 'alpha' ? 'manual' : 'alpha'))}
+              title={
+                sortMode === 'alpha'
+                  ? 'Restaurar orden original'
+                  : 'Ordenar alfabéticamente'
+              }
+            >
+              {sortMode === 'alpha' ? (
+                <>
+                  <ListOrdered className="size-3.5" aria-hidden />
+                  Orden original
+                </>
+              ) : (
+                <>
+                  <ArrowDownAZ className="size-3.5" aria-hidden />
+                  Ordenar A→Z
+                </>
+              )}
+            </Button>
           </div>
-          {arbol.length === 0 ? (
+          {arbolOrdenado.length === 0 ? (
             <div className="px-5 py-12 text-center text-sm text-muted-foreground">
               No hay rubros todavía. Creá el primero arriba.
             </div>
           ) : (
             <ul className="divide-y">
-              {arbol.map((n) => (
+              {arbolOrdenado.map((n) => (
                 <NodeView
                   key={n.id}
                   node={n}
