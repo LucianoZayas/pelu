@@ -29,11 +29,14 @@ describe('parseXlsx — row loop con C.2 split y forward-fill', () => {
     expect(demolicion.find((i) => i.descripcion.endsWith('— Mano de obra'))).toBeDefined();
   });
 
-  test('C.2: fila con solo MO genera 1 item (— Mano de obra)', async () => {
+  test('C.2: fila con solo MO genera 1 item sin suffix', async () => {
+    // El suffix " — Mano de obra" solo se agrega cuando la fila tiene
+    // material AND MO (split). Si la fila tiene solo MO, el item conserva
+    // la descripción original sin suffix — más legible.
     const r = await parseXlsx(await loadFixture('synthetic-small.xlsx'), 's.xlsx');
     const mesada = r.items.filter((i) => i.descripcion.startsWith('Mesada baño'));
     expect(mesada).toHaveLength(1);
-    expect(mesada[0].descripcion).toBe('Mesada baño — Mano de obra');
+    expect(mesada[0].descripcion).toBe('Mesada baño');
     expect(mesada[0].costoUnitario).toBe(250000);
   });
 

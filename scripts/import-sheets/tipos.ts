@@ -21,14 +21,34 @@ export interface FilaXlsx {
 }
 
 export interface WarningItem {
-  tipo: 'rubro_heredado' | 'costo_invalido' | 'ref_error' | 'ubicacion_nueva';
+  tipo:
+    | 'rubro_heredado'
+    | 'costo_invalido'
+    | 'ref_error'
+    | 'ubicacion_nueva'
+    | 'costo_solo_parcial'      // Costo recuperado de col PARCIAL porque TOTAL estaba vacío
+    | 'mo_consolidada'          // Item viene de TOTAL MANO DE OBRA — descripciones detalladas en notas
+    | 'costo_huerfano';         // Costo presente pero sin descripción
   mensaje: string;
 }
+
+/**
+ * Categoría de un descarte:
+ * - 'estructural' → ruido del Excel sin valor de auditoría (headers de sección,
+ *   placeholders ADICIONALES, sub-tablas, filas numeradas). Se cuentan pero
+ *   se muestran como informativo (no alarma).
+ * - 'informativo' → filas que son TOTAL/SUBTOTAL/HONORARIOS/PLANILLA esperables.
+ *   Se muestran agrupadas como "esperado del Excel".
+ * - 'warning' → potencial pérdida de data: orphan cost, #REF!, etc.
+ *   Se muestran prominentes para que el usuario revise.
+ */
+export type CategoriaDescarte = 'estructural' | 'informativo' | 'warning';
 
 export interface DescarteRow {
   filaExcel: number;
   razon: string;
   detalle: string;
+  categoria: CategoriaDescarte;
 }
 
 export interface ItemPreview {
