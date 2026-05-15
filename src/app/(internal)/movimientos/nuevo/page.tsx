@@ -1,0 +1,49 @@
+import { redirect } from 'next/navigation';
+import { requireSession } from '@/lib/auth/require';
+import { listarConceptosActivos } from '@/features/conceptos-movimiento/queries';
+import { listarCuentasActivas } from '@/features/cuentas/queries';
+import { listarPartesActivas } from '@/features/partes/queries';
+import { listarObras } from '@/features/obras/queries';
+import { db } from '@/db/client';
+import { proveedor } from '@/db/schema';
+import { asc, eq } from 'drizzle-orm';
+import { MovimientoForm } from '@/features/movimientos/components/movimiento-form';
+import { PageHeader } from '@/components/page-header';
+
+export default async function Page() {
+  const user = await requireSession();
+  if (user.rol !== 'admin' && user.rol !== 'operador') redirect('/obras');
+
+  const [conceptos, cuentas, obras, partes, proveedores] = await Promise.all([
+    listarConceptosActivos(),
+    listarCuentasActivas(),
+    listarObras(),
+    listarPartesActivas(),
+    db.select().from(proveedor).where(eq(proveedor.activo, true)).orderBy(asc(proveedor.nombre)),
+  ]);
+
+  return (
+    <div className="px-8 py-7 max-w-[920px]">
+      <PageHeader
+        kicker="Flujo de caja"
+        title="Nuevo movimiento"
+        description="Cargá un ingreso, egreso o transferencia entre cuentas. Los saldos se actualizan automáticamente."
+      />
+      <MovimientoForm
+        conceptos={conceptos.map((c) => ({
+          id: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          tipo: c.tipo,
+          requiereObra: c.requiereObra,
+          requiereProveedor: c.requiereProveedor,
+          esNoRecuperable: c.esNoRecuperable,
+        }))}
+        cuentas={cuentas.map((c) => ({ id: c.id, nombre: c.nombre, moneda: c.moneda, tipo: c.tipo }))}
+        obras={obras.map((o) => ({ id: o.id, codigo: o.codigo, nombre: o.nombre }))}
+        partes={partes.map((p) => ({ id: p.id, nombre: p.nombre, tipo: p.tipo }))}
+        proveedores={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+      />
+    </div>
+  );
+}
