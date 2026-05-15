@@ -29,6 +29,14 @@ function cellRef(colNum: number | undefined, rowNum: number): string {
   return `celda ${colNumToLetter(colNum)}${rowNum}`;
 }
 
+/**
+ * Formatea un monto para los warnings (sin currency-prefix, separador de miles).
+ * Se usa puro como texto, no como display de moneda — la moneda se aclara en el contexto.
+ */
+function fmtMonto(n: number): string {
+  return `$${new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Math.round(n))}`;
+}
+
 const HEADER_PATTERNS = {
   RUBRO: /^RUBRO$/i,
   UBICACIÓN: /^UBICACI[ÓO]N$/i,
@@ -562,6 +570,9 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
       (usadoParcialMat || usadoParcialMO)
     ) {
       costoMat = null;
+      // Reset the parcial flag too — no Material was actually imported, so the
+      // "Material desde PARCIAL" warning would be misleading.
+      usadoParcialMat = false;
     }
 
     // Apply discard filters (already covered by classifyDescarte for descartes)
@@ -681,54 +692,60 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
     const markupPorcentaje = coef != null && coef > 1 ? Number((coef - 1).toFixed(4)) : 0;
     const ubicacionFinal = ubicacion || null;
 
-    const warningsBase: WarningItem[] = [];
+    // Warnings que aplican a CUALQUIER item de esta fila (rubro heredado,
+    // #REF!, costo no numérico).
+    const warningsComunes: WarningItem[] = [];
     const rubroColLetter = m.RUBRO ? colNumToLetter(m.RUBRO) : 'RUBRO';
     if (rubroHeredado) {
-      warningsBase.push({
+      warningsComunes.push({
         tipo: 'rubro_heredado',
-        mensaje: `RUBRO vacío en col ${rubroColLetter}${r} → heredado de fila anterior ("${rubroEfectivo}")`,
+        mensaje: `Rubro "${rubroEfectivo}" heredado: la celda ${rubroColLetter}${r} estaba vacía, se usó el rubro de la fila anterior`,
       });
     }
     if (typeof costoTotalRaw === 'string' && costoTotalRaw && safeParseNumber(costoTotalRaw) == null) {
-      warningsBase.push({
+      warningsComunes.push({
         tipo: 'costo_invalido',
         mensaje: `Valor "${costoTotalRaw}" en ${cellRef(m.COSTO_TOTAL, r)} (COSTO TOTAL) no es numérico — importado como 0`,
       });
     }
-    // Identify which specific cell has the #REF! formula
     const refErrCells: string[] = [];
     if (String(costoTotalRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.COSTO_TOTAL, r)} (COSTO TOTAL)`);
     if (String(manoObraTotalRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.MANO_OBRA_TOTAL, r)} (MO TOTAL)`);
     if (String(costoParcialRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.COSTO_PARCIAL, r)} (COSTO PARCIAL)`);
     if (String(manoObraParcialRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.MANO_OBRA_PARCIAL, r)} (MO PARCIAL)`);
     if (refErrCells.length > 0) {
-      warningsBase.push({
+      warningsComunes.push({
         tipo: 'ref_error',
         mensaje: `Fórmula rota (#REF!) en ${refErrCells.join(', ')} — verificar en el Excel`,
       });
     }
-    if (usadoParcialMat) {
-      warningsBase.push({
-        tipo: 'costo_solo_parcial',
-        mensaje: `Material desde ${cellRef(m.COSTO_PARCIAL, r)} (COSTO PARCIAL), ${cellRef(m.COSTO_TOTAL, r)} (COSTO TOTAL) estaba vacía`,
-      });
-    }
-    if (usadoParcialMO) {
-      warningsBase.push({
-        tipo: 'costo_solo_parcial',
-        mensaje: `MO desde ${cellRef(m.MANO_OBRA_PARCIAL, r)} (MO PARCIAL), ${cellRef(m.MANO_OBRA_TOTAL, r)} (MO TOTAL) estaba vacía`,
-      });
-    }
 
-    const estado: ItemPreview['estado'] = warningsBase.some(
-      (w) => w.tipo === 'costo_invalido' || w.tipo === 'ref_error',
-    )
-      ? 'error'
-      : warningsBase.length > 0
-        ? 'warning'
-        : 'ok';
+    // Warnings específicos por tipo de item (Material vs MO). El warning de
+    // "costo desde PARCIAL" aplica solo al item correspondiente, no al otro.
+    const warningMaterial: WarningItem[] = [];
+    if (usadoParcialMat && costoMat != null && costoMat > 0) {
+      warningMaterial.push({
+        tipo: 'costo_solo_parcial',
+        mensaje: `Costo material ${fmtMonto(costoMat)} tomado de COSTO PARCIAL (${cellRef(m.COSTO_PARCIAL, r)}) porque COSTO TOTAL (${cellRef(m.COSTO_TOTAL, r)}) está vacía en el Excel`,
+      });
+    }
+    const warningMO: WarningItem[] = [];
+    if (usadoParcialMO && costoMO != null && costoMO > 0) {
+      warningMO.push({
+        tipo: 'costo_solo_parcial',
+        mensaje: `Costo mano de obra ${fmtMonto(costoMO)} tomado de MO PARCIAL (${cellRef(m.MANO_OBRA_PARCIAL, r)}) porque MO TOTAL (${cellRef(m.MANO_OBRA_TOTAL, r)}) está vacía en el Excel`,
+      });
+    }
+    const warningsBase = warningsComunes;
+
+    function deriveEstado(ws: WarningItem[]): ItemPreview['estado'] {
+      if (ws.some((w) => w.tipo === 'costo_invalido' || w.tipo === 'ref_error')) return 'error';
+      if (ws.length > 0) return 'warning';
+      return 'ok';
+    }
 
     if (costoMat != null && costoMat > 0) {
+      const ws = [...warningsBase, ...warningMaterial];
       items.push({
         filaExcel: r,
         rubro: rubroEfectivo,
@@ -740,13 +757,14 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
         monedaCosto: 'ARS',
         markupPorcentaje,
         notas: `Import XLSX fila ${r}, costo material${usadoParcialMat ? ' (PARCIAL)' : ''}`,
-        warnings: [...warningsBase],
-        estado,
+        warnings: ws,
+        estado: deriveEstado(ws),
         incluido: true,
       });
     }
 
     if (costoMO != null && costoMO > 0) {
+      const ws = [...warningsBase, ...warningMO];
       items.push({
         filaExcel: r,
         rubro: rubroEfectivo,
@@ -758,8 +776,8 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
         monedaCosto: 'ARS',
         markupPorcentaje,
         notas: `Import XLSX fila ${r}, costo mano de obra${usadoParcialMO ? ' (PARCIAL)' : ''}`,
-        warnings: [...warningsBase],
-        estado,
+        warnings: ws,
+        estado: deriveEstado(ws),
         incluido: true,
       });
     }
