@@ -77,7 +77,7 @@ ALTER TABLE "parte" ADD CONSTRAINT "parte_proveedor_ref_check" CHECK (
   (tipo = 'proveedor' AND proveedor_id IS NOT NULL) OR (tipo != 'proveedor' AND proveedor_id IS NULL)
 );--> statement-breakpoint
 ALTER TABLE "movimiento" ADD CONSTRAINT "movimiento_transferencia_cuentas_check" CHECK (
-  tipo != 'transferencia' OR (cuenta_id IS NOT NULL AND cuenta_destino_id IS NOT NULL)
+  tipo::text != 'transferencia' OR (cuenta_id IS NOT NULL AND cuenta_destino_id IS NOT NULL)
 );--> statement-breakpoint
 ALTER TABLE "movimiento" ADD CONSTRAINT "movimiento_cuentas_distintas_check" CHECK (
   cuenta_destino_id IS NULL OR cuenta_destino_id != cuenta_id
