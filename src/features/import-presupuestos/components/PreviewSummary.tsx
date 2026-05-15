@@ -79,6 +79,7 @@ export function PreviewSummary({
 }: Props) {
   const [showInformativo, setShowInformativo] = useState(false);
   const [showEstructural, setShowEstructural] = useState(false);
+  const [warningsExpanded, setWarningsExpanded] = useState(false);
 
   const { warning, informativo, estructural } = useMemo(
     () => groupByCategoria(descartes),
@@ -172,29 +173,61 @@ export function PreviewSummary({
           </div>
         )}
 
-        {/* ⚠️ WARNINGS — siempre visibles, prominentes */}
+        {/* ⚠️ WARNINGS — siempre visibles, prominentes. Expandible con click en el header. */}
         {warning.length > 0 && (
           <Alert variant="default" className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="size-4 text-yellow-700 mr-2" />
             <AlertDescription className="text-yellow-900">
-              <p className="font-semibold mb-2">
+              <button
+                type="button"
+                onClick={() => setWarningsExpanded((v) => !v)}
+                className="flex items-center gap-1.5 font-semibold mb-2 hover:text-yellow-950 transition-colors"
+                aria-expanded={warningsExpanded}
+              >
+                {warningsExpanded ? (
+                  <ChevronDown className="size-3.5" aria-hidden />
+                ) : (
+                  <ChevronRight className="size-3.5" aria-hidden />
+                )}
                 {warning.length === 1
                   ? '1 fila requiere revisión'
                   : `${warning.length} filas requieren revisión`}
-              </p>
+                {warning.length > 8 && !warningsExpanded && (
+                  <span className="ml-1 text-[11px] font-normal text-yellow-800/70">
+                    (mostrando primeras 8)
+                  </span>
+                )}
+              </button>
               <ul className="space-y-1 text-xs">
-                {warning.slice(0, 8).map((d) => (
+                {(warningsExpanded ? warning : warning.slice(0, 8)).map((d) => (
                   <li key={`${d.filaExcel}-${d.razon}`}>
                     <span className="font-mono text-yellow-700">fila {d.filaExcel}</span>{' '}
                     — {d.razon}
                     {d.detalle ? (
-                      <span className="text-yellow-800/80"> · "{d.detalle.slice(0, 60)}"</span>
+                      <span className="text-yellow-800/80"> · &ldquo;{d.detalle.slice(0, 60)}&rdquo;</span>
                     ) : null}
                   </li>
                 ))}
-                {warning.length > 8 && (
-                  <li className="text-yellow-800/70">
-                    ... y {warning.length - 8} más
+                {warning.length > 8 && !warningsExpanded && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setWarningsExpanded(true)}
+                      className="text-yellow-800/80 hover:text-yellow-900 underline-offset-2 hover:underline"
+                    >
+                      Ver las {warning.length - 8} restantes
+                    </button>
+                  </li>
+                )}
+                {warning.length > 8 && warningsExpanded && (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setWarningsExpanded(false)}
+                      className="text-yellow-800/80 hover:text-yellow-900 underline-offset-2 hover:underline"
+                    >
+                      Mostrar menos
+                    </button>
                   </li>
                 )}
               </ul>

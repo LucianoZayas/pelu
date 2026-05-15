@@ -241,6 +241,16 @@ También: definir convención de casing (¿UPPER, Title, libre?) — hoy el seed
 
 Era nice-to-have de F1 según spec, no se implementó. El editor tiene `useFieldArray` que soporta `move(from, to)`. Estimación baja, pero no bloquea nada.
 
+### 3.1.5 Bloquear "Firmar" mientras `importPendiente=true` **[P2, descubierto 2026-05-15]**
+
+Hoy el botón "Firmar presupuesto" se habilita aunque la flag `importPendiente=true` (el usuario podría firmar sin haber confirmado el import primero). El flujo correcto es:
+1. Importar → editor abre con `importPendiente=true` y banner sticky.
+2. Revisar items + warnings.
+3. "Confirmar import" (del banner) → `importPendiente=false`.
+4. Recién ahí, "Firmar presupuesto".
+
+Fix simple: deshabilitar `FirmarDialog` cuando `importPendiente=true` (pasar la flag como prop) y agregar guard en el server action `firmarPresupuesto`. No es regresión, comportamiento preexistente.
+
 ### 3.2 Rol Operador testeado en flujo real **[P1]**
 
 El código implementa el rol `operador` con permisos limitados (`requireRole('admin')` bloquea editor, costos, markups, usuarios). **No hay test E2E** que valide que un operador real no puede ver/hacer lo que no debe. Antes del piloto, smoke + E2E del rol operador.
