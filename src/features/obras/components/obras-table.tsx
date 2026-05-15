@@ -42,16 +42,25 @@ export function ObrasTable({ obras }: { obras: Obra[] }) {
         </TableHeader>
         <TableBody>
           {obras.map((o) => (
-            <TableRow key={o.id} className="group cursor-pointer hover:bg-secondary/40 transition-colors">
+            // Stretched-link pattern: the row is relative; the first cell has
+            // a Link whose ::before pseudo-element fills the row, so clicking
+            // anywhere on the row triggers navigation. Keyboard users get a
+            // single focusable target per row (the Link).
+            <TableRow
+              key={o.id}
+              className="group relative cursor-pointer hover:bg-secondary/40 transition-colors focus-within:bg-secondary/40"
+            >
               <TableCell>
-                <Link href={`/obras/${o.id}`} className="font-mono text-[12.5px] text-foreground hover:text-primary transition-colors">
+                <Link
+                  href={`/obras/${o.id}`}
+                  aria-label={`Abrir obra ${o.codigo} — ${o.nombre}`}
+                  className="font-mono text-[12.5px] text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:text-primary before:absolute before:inset-0 before:content-[''] before:rounded-md focus-visible:before:ring-2 focus-visible:before:ring-ring focus-visible:before:ring-offset-2"
+                >
                   {o.codigo}
                 </Link>
               </TableCell>
-              <TableCell>
-                <Link href={`/obras/${o.id}`} className="text-[14px] font-medium text-foreground hover:text-primary transition-colors">
-                  {o.nombre}
-                </Link>
+              <TableCell className="text-[14px] font-medium text-foreground">
+                {o.nombre}
               </TableCell>
               <TableCell className="text-[13.5px] text-muted-foreground">{o.clienteNombre}</TableCell>
               <TableCell>
@@ -63,13 +72,10 @@ export function ObrasTable({ obras }: { obras: Obra[] }) {
                 </span>
               </TableCell>
               <TableCell>
-                <Link
-                  href={`/obras/${o.id}`}
-                  aria-label={`Abrir obra ${o.codigo}`}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
-                >
-                  <ArrowRight className="size-4" />
-                </Link>
+                <ArrowRight
+                  className="size-4 text-muted-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-hidden
+                />
               </TableCell>
             </TableRow>
           ))}
