@@ -2,7 +2,7 @@ import { db } from '@/db/client';
 import {
   movimiento, conceptoMovimiento, cuenta, obra, parte, proveedor, usuario,
 } from '@/db/schema';
-import { and, asc, desc, eq, gte, lte, or, sql, inArray, ilike } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lte, or, sql, inArray, ilike } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
 export type ListarMovimientosFiltros = {
@@ -64,7 +64,8 @@ export async function listarMovimientos(filtros: ListarMovimientosFiltros = {}):
   const parteDestino = alias(parte, 'parte_destino');
 
   const whereParts = [];
-  if (filtros.obraId) whereParts.push(eq(movimiento.obraId, filtros.obraId));
+  if (filtros.obraId === '__sin_obra__') whereParts.push(isNull(movimiento.obraId));
+  else if (filtros.obraId) whereParts.push(eq(movimiento.obraId, filtros.obraId));
   if (filtros.cuentaId) {
     whereParts.push(or(eq(movimiento.cuentaId, filtros.cuentaId), eq(movimiento.cuentaDestinoId, filtros.cuentaId)));
   }
@@ -142,7 +143,8 @@ export async function listarMovimientos(filtros: ListarMovimientosFiltros = {}):
 
 export async function contarMovimientos(filtros: ListarMovimientosFiltros = {}): Promise<number> {
   const whereParts = [];
-  if (filtros.obraId) whereParts.push(eq(movimiento.obraId, filtros.obraId));
+  if (filtros.obraId === '__sin_obra__') whereParts.push(isNull(movimiento.obraId));
+  else if (filtros.obraId) whereParts.push(eq(movimiento.obraId, filtros.obraId));
   if (filtros.cuentaId) {
     whereParts.push(or(eq(movimiento.cuentaId, filtros.cuentaId), eq(movimiento.cuentaDestinoId, filtros.cuentaId)));
   }

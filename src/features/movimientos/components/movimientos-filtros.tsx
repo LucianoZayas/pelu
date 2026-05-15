@@ -79,6 +79,7 @@ export function MovimientosFiltros({ obras, cuentas, conceptos, partes }: Props)
             <SelectTrigger id="filt-obra" className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__todos__">Todas</SelectItem>
+              <SelectItem value="__sin_obra__">Sin obra (caja empresa)</SelectItem>
               {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
