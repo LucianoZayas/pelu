@@ -24,12 +24,26 @@ export async function crearRubro(input: RubroInput): Promise<Result<{ id: string
   return { ok: true, id: r.id };
 }
 
-export async function editarRubro(id: string, input: RubroInput): Promise<Result> {
+export async function editarRubro(
+  id: string,
+  input: Partial<RubroInput> & { nombre?: string },
+): Promise<Result> {
   const admin = await requireRole('admin');
-  const parsed = rubroInputSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const [before] = await db.select().from(rubro).where(eq(rubro.id, id));
   if (!before) return { ok: false, error: 'No existe' };
+
+  // Build merged update only with fields that were explicitly provided.
+  // This avoids accidentally wiping idPadre when the caller only wants to
+  // change the name (e.g. when renaming or normalizing whitespace).
+  const merged = {
+    nombre: input.nombre ?? before.nombre,
+    idPadre: input.idPadre !== undefined ? input.idPadre : before.idPadre,
+    orden: input.orden !== undefined ? input.orden : before.orden,
+    activo: input.activo !== undefined ? input.activo : before.activo,
+  };
+  const parsed = rubroInputSchema.safeParse(merged);
+  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
+
   const [after] = await db.update(rubro).set(parsed.data).where(eq(rubro.id, id)).returning();
   await logAudit({
     entidad: 'rubro', entidadId: id, accion: 'editar',
