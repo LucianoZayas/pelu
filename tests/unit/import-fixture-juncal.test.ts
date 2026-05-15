@@ -53,10 +53,10 @@ describe('Importer XLSX — snapshot del fixture real Juncal 3706', () => {
     expect(rubros.size).toBeGreaterThanOrEqual(5);
   });
 
-  test('todos los items tienen cantidad=1 y unidad=gl', () => {
+  test('todos los items tienen cantidad=1 y unidad=u', () => {
     for (const item of result.items) {
       expect(item.cantidad).toBe(1);
-      expect(item.unidad).toBe('gl');
+      expect(item.unidad).toBe('u');
     }
   });
 

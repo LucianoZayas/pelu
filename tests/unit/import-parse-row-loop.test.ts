@@ -48,7 +48,7 @@ describe('parseXlsx — row loop con C.2 split y forward-fill', () => {
   test('costoUnitario, cantidad, unidad defaults', async () => {
     const r = await parseXlsx(await loadFixture('synthetic-small.xlsx'), 's.xlsx');
     expect(r.items[0].cantidad).toBe(1);
-    expect(r.items[0].unidad).toBe('gl');
+    expect(r.items[0].unidad).toBe('u');
     expect(r.items[0].monedaCosto).toBe('ARS');
   });
 

@@ -28,7 +28,7 @@ export function ItemsTabla({ rubroIdx, rubrosOptions, disabled, importPendiente 
 
   const addEmpty = () =>
     append({
-      descripcion: '', unidad: 'gl', cantidad: '1',
+      descripcion: '', unidad: 'u', cantidad: '1',
       costoUnitario: '0', costoUnitarioMoneda: 'USD',
       markupPorcentaje: null, notas: null,
       rubroId: rubrosOptions[rubroIdx]?.id, orden: fields.length,

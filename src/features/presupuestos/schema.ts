@@ -12,7 +12,9 @@ export const itemInputSchema = z.object({
   costoUnitario: decimalString,
   costoUnitarioMoneda: z.enum(['USD', 'ARS']),
   markupPorcentaje: decimalString.nullable(),
-  notas: z.string().max(1000).nullable(),
+  // Sanity cap, no DB limit. Acomoda items consolidados del importer
+  // (TOTAL MANO DE OBRA bundlea descripciones de N filas en notas markdown).
+  notas: z.string().max(50_000).nullable(),
 });
 export type ItemInput = z.infer<typeof itemInputSchema>;
 

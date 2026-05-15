@@ -47,11 +47,23 @@ function groupByCategoria(descartes: DescarteRow[]) {
   return { warning, informativo, estructural };
 }
 
-function summarizeByReason(rows: DescarteRow[]): Array<{ razon: string; count: number }> {
-  const m = new Map<string, number>();
-  for (const r of rows) m.set(r.razon, (m.get(r.razon) ?? 0) + 1);
+function summarizeByReason(
+  rows: DescarteRow[],
+): Array<{ razon: string; count: number; samples: string[] }> {
+  const m = new Map<string, { count: number; samples: string[] }>();
+  for (const r of rows) {
+    let entry = m.get(r.razon);
+    if (!entry) {
+      entry = { count: 0, samples: [] };
+      m.set(r.razon, entry);
+    }
+    entry.count += 1;
+    if (r.detalle && entry.samples.length < 4 && !entry.samples.includes(r.detalle)) {
+      entry.samples.push(r.detalle);
+    }
+  }
   return [...m.entries()]
-    .map(([razon, count]) => ({ razon, count }))
+    .map(([razon, { count, samples }]) => ({ razon, count, samples }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -219,6 +231,13 @@ export function PreviewSummary({
                     {informativoSummary.map((s) => (
                       <li key={s.razon}>
                         <span className="font-mono">{s.count}×</span> {s.razon}
+                        {s.count > 1 && s.samples.length > 0 && (
+                          <span className="text-muted-foreground/70">
+                            {' '}
+                            · {s.samples.slice(0, 3).map((x) => `"${x.slice(0, 30)}"`).join(', ')}
+                            {s.samples.length > 3 ? '…' : ''}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -247,6 +266,13 @@ export function PreviewSummary({
                     {estructuralSummary.map((s) => (
                       <li key={s.razon}>
                         <span className="font-mono">{s.count}×</span> {s.razon}
+                        {s.count > 1 && s.samples.length > 0 && (
+                          <span className="text-muted-foreground/70">
+                            {' '}
+                            · {s.samples.slice(0, 3).map((x) => `"${x.slice(0, 30)}"`).join(', ')}
+                            {s.samples.length > 3 ? '…' : ''}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>

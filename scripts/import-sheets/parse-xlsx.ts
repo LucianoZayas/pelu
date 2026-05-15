@@ -8,6 +8,27 @@ import type {
 } from './tipos';
 import { safeParseNumber } from './safe-parse';
 
+/**
+ * Convierte un número de columna (1-based) a su letra Excel (A, B, ..., Z, AA, AB...).
+ * Útil para construir referencias de celda tipo "F140" que el usuario puede pegar
+ * en Excel para saltar directo a la celda con problemas.
+ */
+function colNumToLetter(n: number): string {
+  let s = '';
+  let x = n;
+  while (x > 0) {
+    const m = (x - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
+function cellRef(colNum: number | undefined, rowNum: number): string {
+  if (colNum == null || colNum <= 0) return `fila ${rowNum}`;
+  return `celda ${colNumToLetter(colNum)}${rowNum}`;
+}
+
 const HEADER_PATTERNS = {
   RUBRO: /^RUBRO$/i,
   UBICACIÓN: /^UBICACI[ÓO]N$/i,
@@ -295,24 +316,30 @@ function classifyDescarte(args: {
   costoParcialRaw: unknown;
   manoObraParcialRaw: unknown;
   cubiertaPorTotalMo: boolean;
+  mapeo: Record<string, number>;
 }): { razon: string; categoria: CategoriaDescarte } {
   const {
+    filaExcel,
     detalle,
     rubro,
     col1,
     costoTotalRaw,
     manoObraTotalRaw,
     cubiertaPorTotalMo,
+    mapeo,
   } = args;
 
-  // #REF! anywhere → potential data loss
-  const hasRefError =
-    String(costoTotalRaw).includes('#REF!') ||
-    String(manoObraTotalRaw).includes('#REF!') ||
-    String(args.costoParcialRaw).includes('#REF!') ||
-    String(args.manoObraParcialRaw).includes('#REF!');
-  if (hasRefError) {
-    return { razon: 'Fórmula rota (#REF!) en el Excel — revisar', categoria: 'warning' };
+  // #REF! anywhere → potential data loss (identify which cell)
+  const refCells: string[] = [];
+  if (String(costoTotalRaw).includes('#REF!')) refCells.push(`${cellRef(mapeo.COSTO_TOTAL, filaExcel)} (COSTO TOTAL)`);
+  if (String(manoObraTotalRaw).includes('#REF!')) refCells.push(`${cellRef(mapeo.MANO_OBRA_TOTAL, filaExcel)} (MO TOTAL)`);
+  if (String(args.costoParcialRaw).includes('#REF!')) refCells.push(`${cellRef(mapeo.COSTO_PARCIAL, filaExcel)} (COSTO PARCIAL)`);
+  if (String(args.manoObraParcialRaw).includes('#REF!')) refCells.push(`${cellRef(mapeo.MANO_OBRA_PARCIAL, filaExcel)} (MO PARCIAL)`);
+  if (refCells.length > 0) {
+    return {
+      razon: `Fórmula rota (#REF!) en ${refCells.join(', ')} — verificar en el Excel`,
+      categoria: 'warning',
+    };
   }
 
   // Sub-table header repeated mid-sheet
@@ -460,7 +487,7 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
         descripcion: detalle,
         ubicacion: ubicacion || null,
         cantidad: 1,
-        unidad: 'gl',
+        unidad: 'u',
         costoUnitario: cost,
         monedaCosto: 'ARS',
         markupPorcentaje: coef != null && coef > 1 ? Number((coef - 1).toFixed(4)) : 0,
@@ -550,6 +577,7 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
         costoParcialRaw,
         manoObraParcialRaw,
         cubiertaPorTotalMo: false,
+        mapeo: m,
       });
       descartes.push({ filaExcel: r, razon: cat.razon, detalle, categoria: cat.categoria });
       continue;
@@ -568,7 +596,7 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
     if (col1 && !detalle && !rubroRaw) {
       descartes.push({
         filaExcel: r,
-        razon: `Título de sección "${col1}"`,
+        razon: 'Título de sección',
         detalle: col1,
         categoria: 'estructural',
       });
@@ -597,9 +625,21 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
 
     // Orphan cost
     if (!detalle && ((costoMat != null && costoMat !== 0) || (costoMO != null && costoMO !== 0))) {
+      // Identify which cell carries the orphan cost so the user can jump to it.
+      let costoColNum: number | undefined;
+      let costoColLabel = '';
+      if (costoMat != null && costoMat !== 0) {
+        costoColNum = costoTotalNum != null ? m.COSTO_TOTAL : m.COSTO_PARCIAL;
+        costoColLabel = costoTotalNum != null ? 'COSTO TOTAL' : 'COSTO PARCIAL';
+      } else if (costoMO != null && costoMO !== 0) {
+        costoColNum = manoObraTotalNum != null ? m.MANO_OBRA_TOTAL : m.MANO_OBRA_PARCIAL;
+        costoColLabel = manoObraTotalNum != null ? 'MANO DE OBRA TOTAL' : 'MANO OBRA PARCIAL';
+      }
+      const detalleColLetter = m.DETALLE ? colNumToLetter(m.DETALLE) : 'DETALLE';
+      const monto = costoMat ?? costoMO ?? 0;
       descartes.push({
         filaExcel: r,
-        razon: `Costo huérfano sin descripción ($${(costoMat ?? costoMO) ?? 0})`,
+        razon: `Costo huérfano: ${cellRef(costoColNum, r)} (${costoColLabel}) = $${monto}, pero ${detalleColLetter}${r} (DETALLE) está vacía`,
         detalle: getAnyRowText(row),
         categoria: 'warning',
       });
@@ -642,37 +682,41 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
     const ubicacionFinal = ubicacion || null;
 
     const warningsBase: WarningItem[] = [];
+    const rubroColLetter = m.RUBRO ? colNumToLetter(m.RUBRO) : 'RUBRO';
     if (rubroHeredado) {
       warningsBase.push({
         tipo: 'rubro_heredado',
-        mensaje: `Rubro heredado de fila anterior ("${rubroEfectivo}")`,
+        mensaje: `RUBRO vacío en col ${rubroColLetter}${r} → heredado de fila anterior ("${rubroEfectivo}")`,
       });
     }
     if (typeof costoTotalRaw === 'string' && costoTotalRaw && safeParseNumber(costoTotalRaw) == null) {
       warningsBase.push({
         tipo: 'costo_invalido',
-        mensaje: `Valor "${costoTotalRaw}" en COSTO TOTAL no es numérico — importado como 0`,
+        mensaje: `Valor "${costoTotalRaw}" en ${cellRef(m.COSTO_TOTAL, r)} (COSTO TOTAL) no es numérico — importado como 0`,
       });
     }
-    if (
-      String(costoTotalRaw).includes('#REF!') ||
-      String(manoObraTotalRaw).includes('#REF!')
-    ) {
+    // Identify which specific cell has the #REF! formula
+    const refErrCells: string[] = [];
+    if (String(costoTotalRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.COSTO_TOTAL, r)} (COSTO TOTAL)`);
+    if (String(manoObraTotalRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.MANO_OBRA_TOTAL, r)} (MO TOTAL)`);
+    if (String(costoParcialRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.COSTO_PARCIAL, r)} (COSTO PARCIAL)`);
+    if (String(manoObraParcialRaw).includes('#REF!')) refErrCells.push(`${cellRef(m.MANO_OBRA_PARCIAL, r)} (MO PARCIAL)`);
+    if (refErrCells.length > 0) {
       warningsBase.push({
         tipo: 'ref_error',
-        mensaje: 'Fórmula rota en el Excel (#REF!) — verificar',
+        mensaje: `Fórmula rota (#REF!) en ${refErrCells.join(', ')} — verificar en el Excel`,
       });
     }
     if (usadoParcialMat) {
       warningsBase.push({
         tipo: 'costo_solo_parcial',
-        mensaje: 'Costo material recuperado de COSTO PARCIAL (TOTAL estaba vacío)',
+        mensaje: `Material desde ${cellRef(m.COSTO_PARCIAL, r)} (COSTO PARCIAL), ${cellRef(m.COSTO_TOTAL, r)} (COSTO TOTAL) estaba vacía`,
       });
     }
     if (usadoParcialMO) {
       warningsBase.push({
         tipo: 'costo_solo_parcial',
-        mensaje: 'Costo de mano de obra recuperado de PARCIAL (TOTAL estaba vacío)',
+        mensaje: `MO desde ${cellRef(m.MANO_OBRA_PARCIAL, r)} (MO PARCIAL), ${cellRef(m.MANO_OBRA_TOTAL, r)} (MO TOTAL) estaba vacía`,
       });
     }
 
@@ -691,7 +735,7 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
         descripcion: costoMO != null && costoMO > 0 ? `${detalle} — Material` : detalle,
         ubicacion: ubicacionFinal,
         cantidad: 1,
-        unidad: 'gl',
+        unidad: 'u',
         costoUnitario: costoMat,
         monedaCosto: 'ARS',
         markupPorcentaje,
@@ -709,7 +753,7 @@ export async function parseXlsx(buf: Buffer, archivoNombre: string): Promise<Res
         descripcion: costoMat != null && costoMat > 0 ? `${detalle} — Mano de obra` : detalle,
         ubicacion: ubicacionFinal,
         cantidad: 1,
-        unidad: 'gl',
+        unidad: 'u',
         costoUnitario: costoMO,
         monedaCosto: 'ARS',
         markupPorcentaje,
