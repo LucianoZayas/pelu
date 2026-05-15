@@ -241,15 +241,40 @@ También: definir convención de casing (¿UPPER, Title, libre?) — hoy el seed
 
 Era nice-to-have de F1 según spec, no se implementó. El editor tiene `useFieldArray` que soporta `move(from, to)`. Estimación baja, pero no bloquea nada.
 
-### 3.1.5 Bloquear "Firmar" mientras `importPendiente=true` **[P2, descubierto 2026-05-15]**
+### 3.1.5 Coherencia Firmar ↔ importPendiente **[P1 · BUG, descubierto 2026-05-15]**
 
-Hoy el botón "Firmar presupuesto" se habilita aunque la flag `importPendiente=true` (el usuario podría firmar sin haber confirmado el import primero). El flujo correcto es:
+**Síntomas reportados por el usuario en testeo manual:**
+
+1. El botón "Firmar presupuesto" se habilita aunque la flag `importPendiente=true`. El usuario puede firmar sin haber confirmado el import primero.
+2. **Peor aún**: tras firmar, si el usuario sale del editor y vuelve, el banner "Confirmar importación" sigue visible y el botón **"Cancelar importación" elimina el presupuesto ya firmado** (caída brutal de la inmutabilidad post-firma).
+
+**Cadena de fallas**:
+- `firmarPresupuesto` action no setea `importPendiente=false` al firmar → la flag queda colgada.
+- `cancelarImportAction` no chequea `estado='firmado'` antes de hard-deletear → permite borrar presupuestos firmados.
+- `FirmarDialog` no chequea `importPendiente` → habilitado prematuramente.
+
+**Flujo correcto**:
 1. Importar → editor abre con `importPendiente=true` y banner sticky.
 2. Revisar items + warnings.
 3. "Confirmar import" (del banner) → `importPendiente=false`.
 4. Recién ahí, "Firmar presupuesto".
 
-Fix simple: deshabilitar `FirmarDialog` cuando `importPendiente=true` (pasar la flag como prop) y agregar guard en el server action `firmarPresupuesto`. No es regresión, comportamiento preexistente.
+**Fix sugerido** (a discutir):
+- Opción A: bloquear Firmar mientras `importPendiente=true` (prop + guard en server action). Forzar al usuario a confirmar primero.
+- Opción B: que `firmarPresupuesto` implicitamente haga `importPendiente=false` (firmar = confirmar). Más simple para el usuario, pero menos auditable.
+- En cualquier caso: agregar guard en `cancelarImportAction` que rechace si `estado='firmado'`. **Crítico** — no debería poderse borrar un firmado vía cancel-import.
+
+Brainstorming + spec corto antes de tocar.
+
+### 3.1.6 Empty rows del editor rompen "Datos inválidos" **[P1 · BUG, descubierto 2026-05-15]**
+
+**Síntoma reportado**: el usuario importa, hace click en "+ Agregar item" pero no escribe nada en descripción. Al guardar, el server action devuelve `Datos inválidos` (zod schema requiere `descripcion: z.string().min(1)`). El mensaje es opaco — no dice qué campo, en qué fila, ni cómo arreglarlo.
+
+**Decisiones a tomar**:
+1. **Auto-discard de filas vacías al guardar**: si una fila se agregó pero no se editó (todos los campos en default), descartarla silenciosamente antes de mandarla al server. Resuelve el caso "le di agregar por accidente".
+2. **Feedback inline**: cuando zod rechaza, mostrar qué fila/campo específico falló y bordearlo en rojo (no solo un toast genérico). Necesita propagar el `z.ZodError.issues` al UI y mapear al input correspondiente.
+
+Ambas son necesarias — (1) cubre el caso accidental, (2) cubre cuando el usuario quería agregar algo pero olvidó completar un campo. Brainstorming + spec antes de tocar.
 
 ### 3.2 Rol Operador testeado en flujo real **[P1]**
 
