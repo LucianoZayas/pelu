@@ -67,6 +67,25 @@ export type ActividadItem = {
   descripcion: string | null;
 };
 
+export type ObraConActividad = {
+  obraId: string;
+  codigo: string;
+  nombre: string;
+  totalIngresosArs: string;
+  totalEgresosArs: string;
+  totalIngresosUsd: string;
+  totalEgresosUsd: string;
+  cantidadMovimientos: number;
+};
+
+export type AlertaDashboard = {
+  tipo: 'cuenta_negativa' | 'gasto_no_recuperable' | 'cuenta_sin_movimientos';
+  severidad: 'warning' | 'info';
+  titulo: string;
+  detalle: string;
+  link?: string;
+};
+
 function rowsOf<T>(result: unknown): T[] {
   return (result as unknown as T[]) ?? [];
 }
@@ -232,6 +251,125 @@ export async function obtenerBreakdownPorConcepto(
     totalUsd: String(r.total_usd ?? '0'),
     cantidad: Number(r.cantidad ?? 0),
   }));
+}
+
+// Top N obras con más actividad (cantidad de movimientos) en el período.
+export async function obtenerTopObras(
+  desde: string,
+  hasta: string,
+  topN = 5,
+): Promise<ObraConActividad[]> {
+  const result = await db.execute(sql`
+    SELECT
+      o.id AS obra_id,
+      o.codigo,
+      o.nombre,
+      COUNT(m.id) AS cantidad_movs,
+      COALESCE(SUM(CASE WHEN m.tipo='entrada' AND m.moneda='ARS' THEN m.monto END), 0) AS ing_ars,
+      COALESCE(SUM(CASE WHEN m.tipo='salida'  AND m.moneda='ARS' THEN m.monto END), 0) AS eg_ars,
+      COALESCE(SUM(CASE WHEN m.tipo='entrada' AND m.moneda='USD' THEN m.monto END), 0) AS ing_usd,
+      COALESCE(SUM(CASE WHEN m.tipo='salida'  AND m.moneda='USD' THEN m.monto END), 0) AS eg_usd
+    FROM obra o
+    INNER JOIN movimiento m ON m.obra_id = o.id
+    WHERE m.estado = 'confirmado'
+      AND m.tipo IN ('entrada', 'salida')
+      AND m.fecha >= ${desde}::date
+      AND m.fecha <= ${hasta}::date
+      AND o.deleted_at IS NULL
+    GROUP BY o.id, o.codigo, o.nombre
+    ORDER BY
+      COUNT(m.id) DESC,
+      (
+        COALESCE(SUM(CASE WHEN m.moneda='ARS' THEN m.monto END), 0)
+        + COALESCE(SUM(CASE WHEN m.moneda='USD' THEN m.monto END), 0) * 1000
+      ) DESC
+    LIMIT ${topN}
+  `);
+  return rowsOf<Record<string, unknown>>(result).map((r) => ({
+    obraId: String(r.obra_id),
+    codigo: String(r.codigo),
+    nombre: String(r.nombre),
+    totalIngresosArs: String(r.ing_ars ?? '0'),
+    totalEgresosArs: String(r.eg_ars ?? '0'),
+    totalIngresosUsd: String(r.ing_usd ?? '0'),
+    totalEgresosUsd: String(r.eg_usd ?? '0'),
+    cantidadMovimientos: Number(r.cantidad_movs ?? 0),
+  }));
+}
+
+// Alertas detectadas. Combina varias señales en un solo array para que el
+// dashboard las renderice de forma uniforme.
+export async function obtenerAlertas(
+  desde: string,
+  hasta: string,
+): Promise<AlertaDashboard[]> {
+  const alertas: AlertaDashboard[] = [];
+
+  // Cuentas en saldo negativo
+  const cuentasNeg = await db.execute(sql`
+    SELECT
+      c.id, c.nombre, c.moneda,
+      COALESCE(
+        (SELECT SUM(m.monto) FROM movimiento m
+         WHERE m.cuenta_id = c.id AND m.estado = 'confirmado' AND m.tipo = 'entrada'), 0)
+      + COALESCE(
+        (SELECT SUM(m.monto_destino) FROM movimiento m
+         WHERE m.cuenta_destino_id = c.id AND m.estado = 'confirmado' AND m.tipo = 'transferencia'), 0)
+      - COALESCE(
+        (SELECT SUM(m.monto) FROM movimiento m
+         WHERE m.cuenta_id = c.id AND m.estado = 'confirmado' AND m.tipo IN ('salida','transferencia')), 0)
+        AS saldo
+    FROM cuenta c
+    WHERE c.activo = true
+  `);
+  for (const r of rowsOf<Record<string, unknown>>(cuentasNeg)) {
+    const saldo = Number(r.saldo ?? 0);
+    if (saldo < 0) {
+      const moneda = String(r.moneda) as 'USD' | 'ARS';
+      const fmt = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      alertas.push({
+        tipo: 'cuenta_negativa',
+        severidad: 'warning',
+        titulo: `${r.nombre} en negativo`,
+        detalle: `Saldo actual: ${moneda === 'USD' ? 'US$' : '$'} ${fmt.format(saldo)}`,
+        link: `/movimientos?cuenta=${r.id}`,
+      });
+    }
+  }
+
+  // Gastos no recuperables del período
+  const gastosNoRec = await db.execute(sql`
+    SELECT
+      COALESCE(SUM(CASE WHEN moneda='ARS' THEN monto END), 0) AS total_ars,
+      COALESCE(SUM(CASE WHEN moneda='USD' THEN monto END), 0) AS total_usd,
+      COUNT(*) AS cantidad
+    FROM movimiento
+    WHERE estado='confirmado'
+      AND es_no_recuperable = true
+      AND tipo = 'salida'
+      AND fecha >= ${desde}::date
+      AND fecha <= ${hasta}::date
+  `);
+  const gnr = rowsOf<Record<string, unknown>>(gastosNoRec)[0];
+  if (gnr) {
+    const totalArs = Number(gnr.total_ars ?? 0);
+    const totalUsd = Number(gnr.total_usd ?? 0);
+    const cant = Number(gnr.cantidad ?? 0);
+    if (cant > 0 && (totalArs > 0 || totalUsd > 0)) {
+      const partes = [];
+      if (totalArs > 0) partes.push(`$ ${new Intl.NumberFormat('es-AR').format(totalArs)}`);
+      if (totalUsd > 0) partes.push(`US$ ${new Intl.NumberFormat('es-AR').format(totalUsd)}`);
+      alertas.push({
+        tipo: 'gasto_no_recuperable',
+        severidad: 'info',
+        titulo: `${cant} gasto${cant === 1 ? '' : 's'} no recuperable${cant === 1 ? '' : 's'}`,
+        detalle: `Total absorbido por la empresa en el período: ${partes.join(' · ')}`,
+        link: '/movimientos?estado=confirmado',
+      });
+    }
+  }
+
+  return alertas;
 }
 
 export async function obtenerActividadReciente(limit = 10): Promise<ActividadItem[]> {
