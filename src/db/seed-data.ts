@@ -42,6 +42,7 @@ export const CONCEPTOS_BASE = [
   { codigo: 'HP',                       nombre: 'Honorarios de Proyecto',   tipo: 'ingreso' as const,      requiereObra: false, orden: 4 },
   { codigo: 'COMISION',                 nombre: 'Comisión',                 tipo: 'ingreso' as const,      requiereObra: false, orden: 5 },
   { codigo: 'RECUPERO',                 nombre: 'Recupero',                 tipo: 'ingreso' as const,      requiereObra: true,  orden: 6 },
+  { codigo: 'COBRO_CERTIFICACION',      nombre: 'Cobro de certificación',   tipo: 'ingreso' as const,      requiereObra: true,  orden: 7 },
   // Egresos
   { codigo: 'COBRO_SOCIO',              nombre: 'Cobro de Socio',           tipo: 'egreso' as const,       requiereObra: false, orden: 10 },
   { codigo: 'SUELDO',                   nombre: 'Sueldo',                   tipo: 'egreso' as const,       requiereObra: false, orden: 11 },
