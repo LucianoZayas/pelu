@@ -79,12 +79,19 @@ async function seedAdmin() {
   }
 }
 
+async function syncPartesEspejo() {
+  const { backfillPartesEspejo } = await import('@/features/partes/auto-create');
+  const r = await backfillPartesEspejo();
+  console.log(`✓ Partes espejo sincronizadas: ${r.obras} obras, ${r.proveedores} proveedores`);
+}
+
 async function main() {
   await seedRubros();
   await seedCuentas();
   await seedConceptos();
   await seedPartes();
   await seedAdmin();
+  await syncPartesEspejo();
   console.log('Seed completado.');
   process.exit(0);
 }

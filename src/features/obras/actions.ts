@@ -10,6 +10,7 @@ import { logAudit } from '@/features/audit/log';
 import { obraInputSchema, type ObraInput } from './schema';
 import { siguienteCodigoObra } from './codigo';
 import { listarCodigosDelAnio, getObra } from './queries';
+import { sincronizarParteDeObra } from '@/features/partes/auto-create';
 
 type OkResult<T extends object = object> = { ok: true } & T;
 type ErrResult = { ok: false; error: string };
@@ -48,6 +49,12 @@ export async function crearObra(input: ObraInput): Promise<Result<{ id: string }
     updatedBy: admin.id,
   }).returning();
 
+  await sincronizarParteDeObra(creada.id, {
+    nombre: creada.nombre,
+    codigo: creada.codigo,
+    activo: true,
+  });
+
   await logAudit({
     entidad: 'obra',
     entidadId: creada.id,
@@ -85,6 +92,12 @@ export async function editarObra(id: string, input: ObraInput): Promise<Result> 
     updatedBy: admin.id,
   }).where(eq(obra.id, id)).returning();
 
+  await sincronizarParteDeObra(after.id, {
+    nombre: after.nombre,
+    codigo: after.codigo,
+    activo: after.estado !== 'cancelada' && !after.deletedAt,
+  });
+
   await logAudit({
     entidad: 'obra',
     entidadId: id,
@@ -110,6 +123,13 @@ export async function eliminarObra(id: string): Promise<Result> {
     updatedBy: admin.id,
     updatedAt: new Date(),
   }).where(eq(obra.id, id));
+
+  // Archivar la parte espejo (no la borramos por el audit log).
+  await sincronizarParteDeObra(before.id, {
+    nombre: before.nombre,
+    codigo: before.codigo,
+    activo: false,
+  });
 
   await logAudit({
     entidad: 'obra',
