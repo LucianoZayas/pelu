@@ -4,7 +4,7 @@ import { asc, eq } from 'drizzle-orm';
 
 export type ParteListItem = {
   id: string;
-  tipo: 'empresa' | 'obra' | 'socio' | 'empleado' | 'proveedor' | 'externo';
+  tipo: 'empresa' | 'obra' | 'socio' | 'empleado' | 'proveedor' | 'externo' | 'cliente';
   nombre: string;
   obraId: string | null;
   proveedorId: string | null;

@@ -19,7 +19,6 @@ describe('schemas de configuración del flujo de caja', () => {
     });
 
     it('rechaza tipo desconocido', () => {
-      // @ts-expect-error runtime check
       expect(cuentaInputSchema.safeParse({ nombre: 'x', moneda: 'USD', tipo: 'tarjeta' }).success).toBe(false);
     });
 
@@ -65,11 +64,10 @@ describe('schemas de configuración del flujo de caja', () => {
       }
     });
 
-    it('rechaza tipos auto-generados (obra, proveedor)', () => {
-      // @ts-expect-error runtime check
+    it('rechaza tipos auto-generados (obra, proveedor, cliente)', () => {
       expect(parteInputSchema.safeParse({ tipo: 'obra', nombre: 'X' }).success).toBe(false);
-      // @ts-expect-error runtime check
       expect(parteInputSchema.safeParse({ tipo: 'proveedor', nombre: 'X' }).success).toBe(false);
+      expect(parteInputSchema.safeParse({ tipo: 'cliente', nombre: 'X' }).success).toBe(false);
     });
 
     it('acepta datos opcionales como objeto', () => {
