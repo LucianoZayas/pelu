@@ -3,10 +3,12 @@ import { auditLog } from '@/db/schema';
 
 type Entidad =
   | 'obra' | 'presupuesto' | 'item_presupuesto' | 'usuario' | 'cliente_token' | 'rubro'
-  | 'movimiento' | 'cuenta' | 'concepto_movimiento' | 'parte' | 'proveedor';
+  | 'movimiento' | 'cuenta' | 'concepto_movimiento' | 'parte' | 'proveedor'
+  | 'certificacion' | 'avance_item';
 type Accion =
   | 'crear' | 'editar' | 'eliminar' | 'firmar' | 'cancelar' | 'regenerar_token'
-  | 'anular' | 'restaurar';
+  | 'anular' | 'restaurar'
+  | 'emitir' | 'cobrar';
 
 export interface LogAuditInput {
   entidad: Entidad;

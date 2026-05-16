@@ -12,11 +12,14 @@ export const estadoPresupuestoEnum = pgEnum('estado_presupuesto', ['borrador', '
 export const entidadAuditEnum = pgEnum('entidad_audit', [
   'obra', 'presupuesto', 'item_presupuesto', 'usuario', 'cliente_token', 'rubro',
   'movimiento', 'cuenta', 'concepto_movimiento', 'parte', 'proveedor',
+  'certificacion', 'avance_item',
 ]);
 export const accionAuditEnum = pgEnum('accion_audit', [
   'crear', 'editar', 'eliminar', 'firmar', 'cancelar', 'regenerar_token',
   'anular', 'restaurar',
+  'emitir', 'cobrar',
 ]);
+export const estadoCertificacionEnum = pgEnum('estado_certificacion', ['borrador', 'emitida', 'cobrada', 'anulada']);
 
 export const usuario = pgTable('usuario', {
   id: uuid('id').primaryKey(), // mismo UUID que auth.users.id de Supabase
@@ -183,8 +186,8 @@ export const parte = pgTable('parte', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   tipoActivoIdx: index('parte_tipo_activo_idx').on(t.tipo).where(sql`activo = true`),
-  obraUniqIdx: uniqueIndex('parte_obra_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL AND tipo::text = 'obra'`),
-  clienteUniqIdx: uniqueIndex('parte_cliente_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL AND tipo::text = 'cliente'`),
+  obraUniqIdx: uniqueIndex('parte_obra_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL AND tipo = 'obra'`),
+  clienteUniqIdx: uniqueIndex('parte_cliente_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL AND tipo = 'cliente'`),
   proveedorUniqIdx: uniqueIndex('parte_proveedor_uniq').on(t.proveedorId).where(sql`proveedor_id IS NOT NULL`),
 }));
 
@@ -215,6 +218,9 @@ export const movimiento = pgTable('movimiento', {
   anuladoAt: timestamp('anulado_at', { withTimezone: true }),
   anuladoBy: uuid('anulado_by').references(() => usuario.id),
   version: integer('version').notNull().default(1),
+  // Si el movimiento fue creado por el cobro de una certificación, queda
+  // linkeado para anulación conjunta y trazabilidad.
+  certificacionId: uuid('certificacion_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => usuario.id),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -227,6 +233,61 @@ export const movimiento = pgTable('movimiento', {
   parteOrigenFechaIdx: index('movimiento_parte_origen_fecha_idx').on(t.parteOrigenId, t.fecha).where(sql`parte_origen_id IS NOT NULL`),
   parteDestinoFechaIdx: index('movimiento_parte_destino_fecha_idx').on(t.parteDestinoId, t.fecha).where(sql`parte_destino_id IS NOT NULL`),
   estadoIdx: index('movimiento_estado_idx').on(t.estado).where(sql`estado != 'confirmado'`),
+  certificacionIdx: index('movimiento_certificacion_idx').on(t.certificacionId).where(sql`certificacion_id IS NOT NULL`),
+}));
+
+// ---- Certificaciones de avance (Fase 2) ----
+
+export const certificacion = pgTable('certificacion', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  presupuestoId: uuid('presupuesto_id').notNull().references(() => presupuesto.id),
+  numero: integer('numero').notNull(),
+  fecha: timestamp('fecha', { mode: 'date' }).notNull().defaultNow(),
+  descripcion: text('descripcion'),
+  estado: estadoCertificacionEnum('estado').notNull().default('borrador'),
+  totalNeto: decimal('total_neto', { precision: 18, scale: 4 }).notNull().default('0'),
+  totalHonorarios: decimal('total_honorarios', { precision: 18, scale: 4 }).notNull().default('0'),
+  totalGeneral: decimal('total_general', { precision: 18, scale: 4 }).notNull().default('0'),
+  moneda: monedaEnum('moneda').notNull(),
+  fechaEmision: timestamp('fecha_emision', { withTimezone: true }),
+  fechaCobro: timestamp('fecha_cobro', { withTimezone: true }),
+  anuladoMotivo: text('anulado_motivo'),
+  anuladoAt: timestamp('anulado_at', { withTimezone: true }),
+  anuladoBy: uuid('anulado_by').references(() => usuario.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by').notNull().references(() => usuario.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by').references(() => usuario.id),
+}, (t) => ({
+  presupuestoNumeroUniq: uniqueIndex('certificacion_presupuesto_numero_uniq').on(t.presupuestoId, t.numero),
+  presupuestoIdx: index('certificacion_presupuesto_idx').on(t.presupuestoId),
+  estadoFechaIdx: index('certificacion_estado_fecha_idx').on(t.estado, t.fecha),
+}));
+
+export const avanceItem = pgTable('avance_item', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  certificacionId: uuid('certificacion_id').notNull().references(() => certificacion.id, { onDelete: 'cascade' }),
+  itemPresupuestoId: uuid('item_presupuesto_id').notNull().references(() => itemPresupuesto.id),
+  porcentajeAcumulado: decimal('porcentaje_acumulado', { precision: 6, scale: 2 }).notNull(),
+  porcentajeAnterior: decimal('porcentaje_anterior', { precision: 6, scale: 2 }).notNull().default('0'),
+  montoNetoFacturado: decimal('monto_neto_facturado', { precision: 18, scale: 4 }).notNull(),
+  montoHonorariosFacturado: decimal('monto_honorarios_facturado', { precision: 18, scale: 4 }).notNull(),
+  porcentajeHonorariosAplicado: decimal('porcentaje_honorarios_aplicado', { precision: 6, scale: 2 }).notNull(),
+}, (t) => ({
+  uniqPorCert: uniqueIndex('avance_unico_por_cert').on(t.certificacionId, t.itemPresupuestoId),
+  certIdx: index('avance_item_cert_idx').on(t.certificacionId),
+  itemIdx: index('avance_item_item_idx').on(t.itemPresupuestoId),
+}));
+
+export const certificacionRelations = relations(certificacion, ({ one, many }) => ({
+  presupuesto: one(presupuesto, { fields: [certificacion.presupuestoId], references: [presupuesto.id] }),
+  avances: many(avanceItem),
+  movimientos: many(movimiento, { relationName: 'cert_movs' }),
+}));
+
+export const avanceItemRelations = relations(avanceItem, ({ one }) => ({
+  certificacion: one(certificacion, { fields: [avanceItem.certificacionId], references: [certificacion.id] }),
+  item: one(itemPresupuesto, { fields: [avanceItem.itemPresupuestoId], references: [itemPresupuesto.id] }),
 }));
 
 export const conceptoMovimientoRelations = relations(conceptoMovimiento, ({ many }) => ({
