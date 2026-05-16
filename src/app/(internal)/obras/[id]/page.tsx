@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
-import { Edit, Plus, Upload, ExternalLink, Download, ArrowLeftRight, FileText } from 'lucide-react';
+import { Edit, Plus, Upload, ExternalLink, Download, ArrowLeftRight, FileText, FileCheck } from 'lucide-react';
 import { requireSession } from '@/lib/auth/require';
 import { getObra } from '@/features/obras/queries';
 import { ObraSummary } from '@/features/obras/components/obra-summary';
@@ -32,6 +32,13 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
             >
               <ArrowLeftRight className="size-3.5" />
               Flujo de caja
+            </Link>
+            <Link
+              href={`/obras/${id}/certificaciones`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <FileCheck className="size-3.5" />
+              Certificaciones
             </Link>
             <a
               href={`/api/export/obras/${id}`}
