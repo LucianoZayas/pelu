@@ -4,7 +4,7 @@ import { useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, FileText, Ban, RotateCcw, ExternalLink,
+  ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, FileText, Ban, RotateCcw, ExternalLink, Pencil, Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ type Props = {
   rows: MovimientoRow[];
   total: number;
   esAdmin: boolean;
+  // ID del usuario actual; usado para que operadores solo puedan editar lo propio.
+  userId: string;
 };
 
 function formatMoney(value: string, moneda: 'USD' | 'ARS' | null): string {
@@ -51,7 +53,7 @@ const TIPO_TONE = {
   transferencia: 'text-blue-700',
 };
 
-export function MovimientosTabla({ rows, total, esAdmin }: Props) {
+export function MovimientosTabla({ rows, total, esAdmin, userId }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -126,6 +128,7 @@ export function MovimientosTabla({ rows, total, esAdmin }: Props) {
               const isAnulado = r.estado === 'anulado';
               const puedeAnular = esAdmin && !isAnulado;
               const puedeRestaurar = esAdmin && isAnulado;
+              const puedeEditar = !isAnulado && (esAdmin || r.createdBy === userId);
               return (
                 <TableRow
                   key={r.id}
@@ -217,6 +220,20 @@ export function MovimientosTabla({ rows, total, esAdmin }: Props) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link href={`/movimientos/${r.id}`}>
+                        <Button variant="ghost" size="icon" className="size-7" title="Ver detalle">
+                          <Eye className="size-3.5" aria-hidden />
+                          <span className="sr-only">Ver detalle</span>
+                        </Button>
+                      </Link>
+                      {puedeEditar && (
+                        <Link href={`/movimientos/${r.id}/editar`}>
+                          <Button variant="ghost" size="icon" className="size-7" title="Editar">
+                            <Pencil className="size-3.5" aria-hidden />
+                            <span className="sr-only">Editar</span>
+                          </Button>
+                        </Link>
+                      )}
                       {r.comprobanteUrl && (
                         <a href={r.comprobanteUrl} target="_blank" rel="noreferrer">
                           <Button variant="ghost" size="icon" className="size-7" title="Ver comprobante">

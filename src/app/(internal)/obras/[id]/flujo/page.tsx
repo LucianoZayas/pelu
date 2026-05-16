@@ -125,7 +125,7 @@ export default async function Page({
         />
       </div>
 
-      <MovimientosTabla rows={rows} total={total} esAdmin={user.rol === 'admin'} />
+      <MovimientosTabla rows={rows} total={total} esAdmin={user.rol === 'admin'} userId={user.id} />
     </div>
   );
 }

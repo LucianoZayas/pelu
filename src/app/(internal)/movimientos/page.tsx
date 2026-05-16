@@ -109,6 +109,7 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
           rows={rows}
           total={total}
           esAdmin={user.rol === 'admin'}
+          userId={user.id}
         />
       </div>
     </div>

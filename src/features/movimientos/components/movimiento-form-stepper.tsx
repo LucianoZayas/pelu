@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
-import { crearMovimiento } from '../actions';
+import { crearMovimiento, editarMovimiento } from '../actions';
 import { MovimientoPreview } from './movimiento-preview';
 
 type Concepto = {
@@ -35,6 +35,27 @@ type ObraOption = { id: string; codigo: string; nombre: string };
 type ParteOption = { id: string; nombre: string; tipo: string };
 type ProveedorOption = { id: string; nombre: string };
 
+// Valores iniciales para modo edición.
+export type MovimientoInitialValues = {
+  id: string;
+  version: number;
+  tipoOp: TipoOp;
+  conceptoId: string;
+  fecha: string; // YYYY-MM-DD
+  cuentaId: string;
+  cuentaDestinoId: string;
+  monto: string;
+  montoDestino: string;
+  cotizacion: string;
+  obraId: string;
+  proveedorId: string;
+  parteOrigenId: string;
+  parteDestinoId: string;
+  descripcion: string;
+  numeroComprobante: string;
+  esNoRecuperable: boolean;
+};
+
 type Props = {
   conceptos: Concepto[];
   cuentas: Cuenta[];
@@ -43,6 +64,8 @@ type Props = {
   proveedores: ProveedorOption[];
   // Si viene desde /obras/[id]/flujo, preselecciona esa obra.
   obraIdInicial?: string;
+  // Si está definido, el form opera en modo edición.
+  edit?: MovimientoInitialValues;
 };
 
 type TipoOp = 'entrada' | 'salida' | 'transferencia';
@@ -74,30 +97,32 @@ const TIPO_META: Record<TipoOp, { Icon: typeof ArrowDownToLine; label: string; d
   },
 };
 
-export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, proveedores, obraIdInicial }: Props) {
+export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, proveedores, obraIdInicial, edit }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const isEdit = edit !== undefined;
+  // En modo edición saltamos directo al paso 2 (no se puede cambiar el tipo).
+  const [step, setStep] = useState<1 | 2 | 3>(isEdit ? 2 : 1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const [tipoOp, setTipoOp] = useState<TipoOp | null>(null);
-  const [conceptoId, setConceptoId] = useState<string>('');
+  const [tipoOp, setTipoOp] = useState<TipoOp | null>(edit?.tipoOp ?? null);
+  const [conceptoId, setConceptoId] = useState<string>(edit?.conceptoId ?? '');
   const [conceptoSearch, setConceptoSearch] = useState('');
-  const [fecha, setFecha] = useState(todayIso);
-  const [cuentaId, setCuentaId] = useState('');
-  const [cuentaDestinoId, setCuentaDestinoId] = useState('');
-  const [monto, setMonto] = useState('');
-  const [montoDestino, setMontoDestino] = useState('');
-  const [cotizacion, setCotizacion] = useState('');
-  const [obraId, setObraId] = useState(obraIdInicial ?? '');
-  const [proveedorId, setProveedorId] = useState('');
-  const [parteOrigenId, setParteOrigenId] = useState('');
-  const [parteDestinoId, setParteDestinoId] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [numeroComprobante, setNumeroComprobante] = useState('');
-  const [esNoRecuperable, setEsNoRecuperable] = useState(false);
+  const [fecha, setFecha] = useState(edit?.fecha ?? todayIso);
+  const [cuentaId, setCuentaId] = useState(edit?.cuentaId ?? '');
+  const [cuentaDestinoId, setCuentaDestinoId] = useState(edit?.cuentaDestinoId ?? '');
+  const [monto, setMonto] = useState(edit?.monto ?? '');
+  const [montoDestino, setMontoDestino] = useState(edit?.montoDestino ?? '');
+  const [cotizacion, setCotizacion] = useState(edit?.cotizacion ?? '');
+  const [obraId, setObraId] = useState(edit?.obraId ?? obraIdInicial ?? '');
+  const [proveedorId, setProveedorId] = useState(edit?.proveedorId ?? '');
+  const [parteOrigenId, setParteOrigenId] = useState(edit?.parteOrigenId ?? '');
+  const [parteDestinoId, setParteDestinoId] = useState(edit?.parteDestinoId ?? '');
+  const [descripcion, setDescripcion] = useState(edit?.descripcion ?? '');
+  const [numeroComprobante, setNumeroComprobante] = useState(edit?.numeroComprobante ?? '');
+  const [esNoRecuperable, setEsNoRecuperable] = useState(edit?.esNoRecuperable ?? false);
 
   const concepto = useMemo(() => conceptos.find((c) => c.id === conceptoId), [conceptos, conceptoId]);
   const cuentaOrigen = useMemo(() => cuentas.find((c) => c.id === cuentaId), [cuentas, cuentaId]);
@@ -115,12 +140,11 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
   }, [conceptos, tipoOp, conceptoSearch]);
 
   // Cuando cambia el concepto, sincronizamos esNoRecuperable con el default del
-  // concepto nuevo. Si el concepto lo marca true, se prende (y el checkbox queda
-  // disabled). Si lo marca false, se apaga (y el usuario puede prenderlo manual).
-  // Antes el effect solo prendía pero nunca apagaba, lo que dejaba el flag pegado.
+  // concepto nuevo. En edición no aplicamos esto: respetamos el valor original
+  // del movimiento (que se cargó desde la DB).
   useEffect(() => {
-    if (concepto) setEsNoRecuperable(concepto.esNoRecuperable);
-  }, [concepto]);
+    if (!isEdit && concepto) setEsNoRecuperable(concepto.esNoRecuperable);
+  }, [concepto, isEdit]);
 
   function elegirTipo(t: TipoOp) {
     setTipoOp(t);
@@ -173,7 +197,8 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
 
   function handleVolver() {
     setErrorMsg(null);
-    if (step === 2) setStep(1);
+    // En edición el paso 1 no existe (tipo no se puede cambiar), del 2 se sale del form.
+    if (step === 2 && !isEdit) setStep(1);
     else if (step === 3) setStep(2);
   }
 
@@ -215,10 +240,12 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
         };
 
     startTransition(async () => {
-      const r = await crearMovimiento(payload);
+      const r = edit
+        ? await editarMovimiento(edit.id, payload, edit.version)
+        : await crearMovimiento(payload);
       if (r.ok) {
-        toast.success('Movimiento creado');
-        router.push('/movimientos');
+        toast.success(edit ? 'Movimiento actualizado' : 'Movimiento creado');
+        router.push(edit ? `/movimientos/${edit.id}` : '/movimientos');
         router.refresh();
       } else {
         setErrorMsg(r.error);
@@ -263,7 +290,7 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
     <>
       <Toaster />
 
-      <StepperHeader step={step} onJumpBack={(s) => setStep(s)} />
+      <StepperHeader step={step} onJumpBack={(s) => setStep(s)} hideStep1={isEdit} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mt-6">
         <div>
@@ -342,10 +369,15 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
             <Button
               type="button"
               variant="outline"
-              onClick={step === 1 ? () => router.push('/movimientos') : handleVolver}
+              onClick={
+                // En edición no se vuelve al paso 1 (no se puede cambiar tipo).
+                (step === 1 || (step === 2 && isEdit))
+                  ? () => router.push(isEdit && edit ? `/movimientos/${edit.id}` : '/movimientos')
+                  : handleVolver
+              }
               disabled={pending}
             >
-              {step === 1 ? (
+              {(step === 1 || (step === 2 && isEdit)) ? (
                 <><X className="size-4 mr-1" aria-hidden />Cancelar</>
               ) : (
                 <><ChevronLeft className="size-4 mr-1" aria-hidden />Volver</>
@@ -363,7 +395,7 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
             ) : (
               <Button type="button" onClick={handleSubmit} disabled={pending || missingRequired.length > 0}>
                 <Save className="size-4 mr-1" aria-hidden />
-                {pending ? 'Guardando…' : 'Guardar movimiento'}
+                {pending ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Guardar movimiento')}
               </Button>
             )}
           </div>
@@ -379,12 +411,15 @@ export function MovimientoFormStepper({ conceptos, cuentas, obras, partes, prove
 
 // ----------------- Sub-componentes -----------------
 
-function StepperHeader({ step, onJumpBack }: { step: 1 | 2 | 3; onJumpBack: (s: 1 | 2 | 3) => void }) {
-  const steps = [
+function StepperHeader({
+  step, onJumpBack, hideStep1 = false,
+}: { step: 1 | 2 | 3; onJumpBack: (s: 1 | 2 | 3) => void; hideStep1?: boolean }) {
+  const allSteps = [
     { n: 1, label: 'Tipo' },
     { n: 2, label: 'Datos' },
     { n: 3, label: 'Detalles' },
   ] as const;
+  const steps = hideStep1 ? allSteps.slice(1) : allSteps;
   return (
     <ol className="flex items-center gap-3">
       {steps.map((s, i) => {
