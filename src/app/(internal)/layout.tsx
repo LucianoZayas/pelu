@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Building2, Layers, Users, History, LogOut, Wallet, ArrowLeftRight, Tags, Contact, LayoutDashboard } from 'lucide-react';
+import { Building2, Layers, Users, History, LogOut, Wallet, ArrowLeftRight, Tags, Contact, LayoutDashboard, Briefcase } from 'lucide-react';
 import { requireSession } from '@/lib/auth/require';
 import { cerrarSesion } from './sign-out-action';
 
@@ -76,6 +76,7 @@ export default async function InternalLayout({ children }: { children: React.Rea
               <NavItem href="/configuracion/cuentas" label="Cuentas" icon={Wallet} />
               <NavItem href="/configuracion/conceptos" label="Conceptos" icon={Tags} />
               <NavItem href="/configuracion/partes" label="Partes" icon={Contact} />
+              <NavItem href="/configuracion/proveedores" label="Proveedores" icon={Briefcase} />
               <NavItem href="/configuracion/usuarios" label="Usuarios" icon={Users} />
               <NavItem href="/configuracion/auditoria" label="Auditoría" icon={History} />
             </>
