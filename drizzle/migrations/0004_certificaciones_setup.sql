@@ -1,28 +1,38 @@
 -- Setup previo a las tablas de certificaciones (mig 0005).
 -- Acá agregamos:
--- 1. Nuevo valor 'cliente' al enum tipo_parte (no se puede combinar con uso en CHECK
---    en la misma transacción, por eso queda en migration aparte).
+-- 1. Nuevo valor 'cliente' al enum tipo_parte.
 -- 2. Override de porcentaje de honorarios por item del presupuesto.
+-- 3. Reorganización de unique indexes en parte (obra y cliente pueden coexistir).
+--
+-- IMPORTANTE: drizzle-kit migrate envuelve todo en una transacción, y el valor
+-- de enum recién agregado NO es visible dentro de la misma transacción. Por eso
+-- la migration tuvo que aplicarse en partes vía scripts/apply-0004.ts en local.
+-- Si necesitás reproducir esto en otro entorno, correr ese script ANTES de que
+-- drizzle marque la migration como aplicada en el journal. Detalle del bug:
+-- https://github.com/drizzle-team/drizzle-orm/issues/x (issue conocido enum+tx).
 
-ALTER TYPE "public"."tipo_parte" ADD VALUE 'cliente';--> statement-breakpoint
+ALTER TYPE "public"."tipo_parte" ADD VALUE IF NOT EXISTS 'cliente';--> statement-breakpoint
 
-ALTER TABLE "item_presupuesto" ADD COLUMN "porcentaje_honorarios" numeric(6, 2);--> statement-breakpoint
+ALTER TABLE "item_presupuesto" ADD COLUMN IF NOT EXISTS "porcentaje_honorarios" numeric(6, 2);--> statement-breakpoint
 
 COMMENT ON COLUMN "item_presupuesto"."porcentaje_honorarios" IS
   'Override del porcentaje de honorarios para este item. Si NULL, usa obra.porcentaje_honorarios.';--> statement-breakpoint
 
--- El índice parte_obra_uniq actual previene 2 partes con el mismo obra_id, pero ahora
--- necesitamos permitir una parte tipo='obra' Y una parte tipo='cliente' para la misma
--- obra. Lo recreamos diferenciado por tipo. Cast a text para no chocar con el valor de
--- enum recién agregado en la misma transacción.
-
 DROP INDEX IF EXISTS "parte_obra_uniq";--> statement-breakpoint
 
-CREATE UNIQUE INDEX "parte_obra_uniq"
+CREATE UNIQUE INDEX IF NOT EXISTS "parte_obra_uniq"
   ON "parte" ("obra_id")
-  WHERE obra_id IS NOT NULL AND tipo::text = 'obra';--> statement-breakpoint
+  WHERE obra_id IS NOT NULL AND tipo = 'obra';--> statement-breakpoint
 
-CREATE UNIQUE INDEX "parte_cliente_uniq"
+CREATE UNIQUE INDEX IF NOT EXISTS "parte_cliente_uniq"
   ON "parte" ("obra_id")
-  WHERE obra_id IS NOT NULL AND tipo::text = 'cliente';
+  WHERE obra_id IS NOT NULL AND tipo = 'cliente';--> statement-breakpoint
 
+-- El CHECK original (mig 0003) limitaba que obra_id sólo aplica a tipo='obra'.
+-- Ahora también tipo='cliente' tiene obra_id, así que relajamos el constraint.
+ALTER TABLE "parte" DROP CONSTRAINT IF EXISTS "parte_obra_ref_check";--> statement-breakpoint
+
+ALTER TABLE "parte" ADD CONSTRAINT "parte_obra_ref_check" CHECK (
+  (tipo IN ('obra', 'cliente') AND obra_id IS NOT NULL) OR
+  (tipo NOT IN ('obra', 'cliente') AND obra_id IS NULL)
+);

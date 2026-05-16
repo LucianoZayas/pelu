@@ -82,7 +82,7 @@ async function seedAdmin() {
 async function syncPartesEspejo() {
   const { backfillPartesEspejo } = await import('@/features/partes/auto-create');
   const r = await backfillPartesEspejo();
-  console.log(`✓ Partes espejo sincronizadas: ${r.obras} obras, ${r.proveedores} proveedores`);
+  console.log(`✓ Partes espejo sincronizadas: ${r.obras} obras, ${r.proveedores} proveedores, ${r.clientes} clientes`);
 }
 
 async function main() {

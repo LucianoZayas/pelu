@@ -10,7 +10,7 @@ import { logAudit } from '@/features/audit/log';
 import { obraInputSchema, type ObraInput } from './schema';
 import { siguienteCodigoObra } from './codigo';
 import { listarCodigosDelAnio, getObra } from './queries';
-import { sincronizarParteDeObra } from '@/features/partes/auto-create';
+import { sincronizarParteDeObra, actualizarParteDeClienteSiExiste } from '@/features/partes/auto-create';
 
 type OkResult<T extends object = object> = { ok: true } & T;
 type ErrResult = { ok: false; error: string };
@@ -97,6 +97,16 @@ export async function editarObra(id: string, input: ObraInput): Promise<Result> 
     codigo: after.codigo,
     activo: after.estado !== 'cancelada' && !after.deletedAt,
   });
+
+  // Si la obra ya tiene parte cliente (presupuesto firmado), mantener el
+  // nombre/email sincronizado. Si todavía no firmó, no la creamos acá — espera
+  // al firmar.
+  if (before.clienteNombre !== after.clienteNombre || before.clienteEmail !== after.clienteEmail) {
+    await actualizarParteDeClienteSiExiste(after.id, {
+      nombre: after.clienteNombre,
+      email: after.clienteEmail,
+    });
+  }
 
   await logAudit({
     entidad: 'obra',

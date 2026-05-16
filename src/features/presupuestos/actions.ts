@@ -15,6 +15,7 @@ import {
 } from './schema';
 import { getMaxNumero, getPresupuesto, getItemsConRubros } from './queries';
 import { StaleVersionError } from './errors';
+import { sincronizarParteDeCliente } from '@/features/partes/auto-create';
 
 type OkResult<T extends object = object> = { ok: true } & T;
 type ErrResult = { ok: false; error: string; code?: string };
@@ -188,6 +189,14 @@ export async function firmarPresupuesto(presupuestoId: string, version: number):
   if (updated.length === 0) {
     return { ok: false, error: 'Versión obsoleta o estado cambió. Recargá.', code: 'STALE_VERSION' };
   }
+
+  // Auto-creación de parte cliente al firmar — idempotente, así que es seguro
+  // llamarlo cada vez que se firma un presupuesto de la obra (no solo el primero).
+  await sincronizarParteDeCliente(p.obraId, {
+    nombre: p.obra.clienteNombre,
+    email: p.obra.clienteEmail,
+    activo: true,
+  });
 
   await logAudit({
     entidad: 'presupuesto', entidadId: presupuestoId, accion: 'firmar',
