@@ -7,7 +7,8 @@ import { db } from '@/db/client';
 import { presupuesto, itemPresupuesto, rubro } from '@/db/schema';
 import { getObraByToken } from '@/lib/auth/cliente-token';
 import { D } from '@/lib/money/decimal';
-import { Download, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Download, ArrowLeft, CheckCircle2, Circle, TrendingUp } from 'lucide-react';
 
 export default async function PresupuestoClientePage({
   params,
@@ -31,21 +32,39 @@ export default async function PresupuestoClientePage({
     .where(eq(itemPresupuesto.presupuestoId, p.id))
     .orderBy(asc(itemPresupuesto.orden));
 
-  // Agrupar por rubro.
+  // Agrupar por rubro, calculando subtotal y % avance ponderado por monto del item.
   const grupos: Record<
     string,
-    { nombre: string; items: typeof items; subtotal: ReturnType<typeof D> }
+    { nombre: string; items: typeof items; subtotal: ReturnType<typeof D>; avanceMonto: ReturnType<typeof D> }
   > = {};
   for (const row of items) {
     const k = row.rubro?.nombre ?? 'Sin rubro';
-    grupos[k] ??= { nombre: k, items: [], subtotal: D(0) };
+    grupos[k] ??= { nombre: k, items: [], subtotal: D(0), avanceMonto: D(0) };
+    const subtotalItem = D(row.item.precioUnitarioCliente).times(row.item.cantidad);
+    const avanceItem = subtotalItem.times(D(row.item.porcentajeAvance)).div(100);
     grupos[k].items.push(row);
-    grupos[k].subtotal = grupos[k].subtotal.plus(
-      D(row.item.precioUnitarioCliente).times(row.item.cantidad),
-    );
+    grupos[k].subtotal = grupos[k].subtotal.plus(subtotalItem);
+    grupos[k].avanceMonto = grupos[k].avanceMonto.plus(avanceItem);
   }
 
-  const totalCliente = D(p.totalClienteCalculado ?? '0');
+  // Totales: subtotal de items + honorarios + total general + ejecutado.
+  const subtotalItems = items.reduce(
+    (sum, row) => sum.plus(D(row.item.precioUnitarioCliente).times(row.item.cantidad)),
+    D(0),
+  );
+  const totalHonorarios = items.reduce((sum, row) => {
+    const subtotalItem = D(row.item.precioUnitarioCliente).times(row.item.cantidad);
+    const porcentaje = D(row.item.porcentajeHonorarios ?? obra.porcentajeHonorarios);
+    return sum.plus(subtotalItem.times(porcentaje).div(100));
+  }, D(0));
+  const totalCliente = subtotalItems.plus(totalHonorarios);
+  const totalEjecutado = items.reduce((sum, row) => {
+    const subtotalItem = D(row.item.precioUnitarioCliente).times(row.item.cantidad);
+    return sum.plus(subtotalItem.times(D(row.item.porcentajeAvance)).div(100));
+  }, D(0));
+  const progresoGlobalNum = Number(subtotalItems) > 0
+    ? Number(totalEjecutado) / Number(subtotalItems) * 100
+    : 0;
 
   return (
     <article>
@@ -76,11 +95,49 @@ export default async function PresupuestoClientePage({
         </a>
       </div>
 
+      {/* Banner de avance de obra */}
+      {progresoGlobalNum > 0 && (
+        <div className="mb-6 rounded-xl border bg-gradient-to-br from-primary/5 to-white px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)]">
+          <div className="flex items-end justify-between gap-4 mb-3">
+            <div>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 mb-1 flex items-center gap-1.5">
+                <TrendingUp className="size-3" aria-hidden />
+                Avance actual de la obra
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[32px] font-bold leading-none tabular-nums">
+                  {progresoGlobalNum.toFixed(1)}
+                </span>
+                <span className="text-[16px] text-muted-foreground font-semibold">%</span>
+              </div>
+            </div>
+            {progresoGlobalNum >= 100 && (
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-[12px] font-semibold text-emerald-800">
+                <CheckCircle2 className="size-4" aria-hidden />
+                Obra completada
+              </div>
+            )}
+          </div>
+          <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
+            <div
+              className={cn(
+                'h-full transition-all duration-500 ease-out rounded-full',
+                progresoGlobalNum >= 100
+                  ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                  : 'bg-gradient-to-r from-primary/70 to-primary',
+              )}
+              style={{ width: `${Math.min(100, progresoGlobalNum)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Items table */}
       <div className="rounded-xl border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] overflow-hidden mb-6">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b bg-[#F8F9FB]">
+              <th className="text-left px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-8" />
               <th className="text-left px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
                 Descripción
               </th>
@@ -96,55 +153,111 @@ export default async function PresupuestoClientePage({
               <th className="text-right px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-36">
                 Subtotal
               </th>
+              <th className="text-center px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 w-36">
+                Avance
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {Object.values(grupos).map((g) => (
-              <Fragment key={g.nombre}>
-                {/* Rubro header */}
-                <tr className="bg-secondary/50">
-                  <td colSpan={5} className="px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {g.nombre}
-                  </td>
-                </tr>
-                {g.items.map(({ item }) => (
-                  <tr key={item.id} className="hover:bg-secondary/20 transition-colors">
-                    <td className="px-4 py-2.5 text-foreground">{item.descripcion}</td>
-                    <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.cantidad}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{item.unidad}</td>
-                    <td className="px-4 py-2.5 text-right font-mono">
-                      {D(item.precioUnitarioCliente).toFixed(2)}
+            {Object.values(grupos).map((g) => {
+              const progresoRubro = Number(g.subtotal) > 0
+                ? Number(g.avanceMonto) / Number(g.subtotal) * 100
+                : 0;
+              return (
+                <Fragment key={g.nombre}>
+                  {/* Rubro header */}
+                  <tr className="bg-secondary/50">
+                    <td className="px-4 py-2" />
+                    <td colSpan={5} className="px-4 py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.nombre}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono">
-                      {D(item.precioUnitarioCliente).times(item.cantidad).toFixed(2)}
+                    <td className="px-4 py-2 text-right text-[11.5px] font-mono text-muted-foreground tabular-nums">
+                      {progresoRubro.toFixed(0)}%
                     </td>
                   </tr>
-                ))}
-                {/* Subtotal row */}
-                <tr className="bg-secondary/30 border-t">
-                  <td colSpan={4} className="px-4 py-2 text-right text-[12px] font-semibold text-muted-foreground">
-                    Subtotal {g.nombre}
-                  </td>
-                  <td className="px-4 py-2 text-right font-mono font-semibold">
-                    {g.subtotal.toFixed(2)}
-                  </td>
-                </tr>
-              </Fragment>
-            ))}
+                  {g.items.map(({ item }) => {
+                    const pct = Math.min(100, Math.max(0, Number(item.porcentajeAvance)));
+                    const completo = pct >= 100;
+                    const empezado = pct > 0;
+                    return (
+                      <tr key={item.id} className={cn(
+                        'hover:bg-secondary/20 transition-colors',
+                        completo && 'bg-emerald-50/30',
+                      )}>
+                        <td className="px-4 py-2.5">
+                          {completo ? (
+                            <CheckCircle2 className="size-4 text-emerald-500" aria-hidden />
+                          ) : empezado ? (
+                            <Circle className="size-4 text-blue-500" strokeWidth={2.5} aria-hidden />
+                          ) : (
+                            <Circle className="size-4 text-muted-foreground/30" aria-hidden />
+                          )}
+                        </td>
+                        <td className={cn('px-4 py-2.5', completo && 'text-muted-foreground')}>{item.descripcion}</td>
+                        <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.cantidad}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{item.unidad}</td>
+                        <td className="px-4 py-2.5 text-right font-mono">
+                          {D(item.precioUnitarioCliente).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono">
+                          {D(item.precioUnitarioCliente).times(item.cantidad).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                              <div
+                                className={cn(
+                                  'h-full transition-all duration-300',
+                                  completo ? 'bg-emerald-500' : 'bg-primary',
+                                )}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-mono tabular-nums text-muted-foreground w-9 text-right">
+                              {pct.toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Subtotal row */}
+                  <tr className="bg-secondary/30 border-t">
+                    <td className="px-4 py-2" />
+                    <td colSpan={4} className="px-4 py-2 text-right text-[12px] font-semibold text-muted-foreground">
+                      Subtotal {g.nombre}
+                    </td>
+                    <td className="px-4 py-2 text-right font-mono font-semibold">
+                      {g.subtotal.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2" />
+                  </tr>
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* Total destacado */}
+      {/* Desglose: subtotal + honorarios + total */}
       <div className="mb-8 flex justify-end">
-        <div className="rounded-xl border bg-white px-6 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] text-right">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 mb-1">
-            Total {obra.monedaBase}
-          </p>
-          <p className="font-mono text-[28px] font-bold tracking-tight text-foreground">
-            {totalCliente.toFixed(2)}
-          </p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{obra.monedaBase}</p>
+        <div className="rounded-xl border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] overflow-hidden min-w-[340px]">
+          <div className="px-6 py-3 flex justify-between border-b text-[13px]">
+            <span className="text-muted-foreground">Subtotal items</span>
+            <span className="font-mono">{subtotalItems.toFixed(2)} {obra.monedaBase}</span>
+          </div>
+          <div className="px-6 py-3 flex justify-between border-b text-[13px]">
+            <span className="text-muted-foreground">Honorarios profesionales</span>
+            <span className="font-mono">{totalHonorarios.toFixed(2)} {obra.monedaBase}</span>
+          </div>
+          <div className="px-6 py-4 flex justify-between items-baseline bg-secondary/30">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+              Total {obra.monedaBase}
+            </span>
+            <span className="font-mono text-[24px] font-bold tracking-tight text-foreground">
+              {totalCliente.toFixed(2)}
+            </span>
+          </div>
         </div>
       </div>
 

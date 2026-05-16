@@ -24,7 +24,7 @@ import { crearParte, editarParte, archivarParte, restaurarParte } from '../actio
 import { TIPOS_MANUALES, type TipoPartManual } from '../schema';
 import type { ParteListItem } from '../queries';
 
-type TipoParte = 'empresa' | 'obra' | 'socio' | 'empleado' | 'proveedor' | 'externo';
+type TipoParte = 'empresa' | 'obra' | 'socio' | 'empleado' | 'proveedor' | 'externo' | 'cliente';
 
 type FormState = {
   id?: string;
@@ -48,6 +48,7 @@ const EMPTY: FormState = {
 const TIPO_META: Record<TipoParte, { label: string; Icon: typeof Building2; tone: string }> = {
   empresa:   { label: 'Empresa',   Icon: Building,   tone: 'border-indigo-300 bg-indigo-50 text-indigo-800' },
   obra:      { label: 'Obra',      Icon: Building2,  tone: 'border-blue-300 bg-blue-50 text-blue-800' },
+  cliente:   { label: 'Cliente',   Icon: User,       tone: 'border-cyan-300 bg-cyan-50 text-cyan-800' },
   socio:     { label: 'Socio',     Icon: Users,      tone: 'border-purple-300 bg-purple-50 text-purple-800' },
   empleado:  { label: 'Empleado',  Icon: User,       tone: 'border-emerald-300 bg-emerald-50 text-emerald-800' },
   proveedor: { label: 'Proveedor', Icon: Briefcase,  tone: 'border-amber-300 bg-amber-50 text-amber-800' },

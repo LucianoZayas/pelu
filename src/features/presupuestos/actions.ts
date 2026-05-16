@@ -189,6 +189,16 @@ export async function firmarPresupuesto(presupuestoId: string, version: number):
     return { ok: false, error: 'Versión obsoleta o estado cambió. Recargá.', code: 'STALE_VERSION' };
   }
 
+  // Auto-creación de parte cliente al firmar — idempotente, así que no importa
+  // si es el primer firmado de la obra o uno posterior. Habilita registrar
+  // movimientos de cobro vinculados al cliente.
+  const { sincronizarParteDeCliente } = await import('@/features/partes/auto-create');
+  await sincronizarParteDeCliente(p.obraId, {
+    nombre: p.obra.clienteNombre,
+    email: p.obra.clienteEmail,
+    activo: true,
+  });
+
   await logAudit({
     entidad: 'presupuesto', entidadId: presupuestoId, accion: 'firmar',
     after: updated[0] as Record<string, unknown>, usuarioId: admin.id,

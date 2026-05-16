@@ -36,7 +36,6 @@ describe('movimientos schema (zod)', () => {
     });
 
     it('rechaza moneda inválida', () => {
-      // @ts-expect-error testeando runtime check
       expect(movimientoSimpleInputSchema.safeParse({ ...valid, moneda: 'EUR' }).success).toBe(false);
     });
 

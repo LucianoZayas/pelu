@@ -109,6 +109,10 @@ export const itemPresupuesto = pgTable('item_presupuesto', {
   markupPorcentaje: decimal('markup_porcentaje', { precision: 6, scale: 2 }),
   markupEfectivoPorcentaje: decimal('markup_efectivo_porcentaje', { precision: 6, scale: 2 }).notNull(),
   precioUnitarioCliente: decimal('precio_unitario_cliente', { precision: 18, scale: 4 }).notNull(),
+  // Override del % honorarios para este item (default: obra.porcentajeHonorarios).
+  porcentajeHonorarios: decimal('porcentaje_honorarios', { precision: 6, scale: 2 }),
+  // Avance del item (0-100). Evoluciona conforme se completa el trabajo.
+  porcentajeAvance: decimal('porcentaje_avance', { precision: 6, scale: 2 }).notNull().default('0'),
   notas: text('notas'),
   ubicacion: text('ubicacion'),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -130,7 +134,7 @@ export const auditLog = pgTable('audit_log', {
 export const tipoMovimientoEnum = pgEnum('tipo_movimiento', ['entrada', 'salida', 'transferencia']);
 export const tipoConceptoEnum = pgEnum('tipo_concepto', ['ingreso', 'egreso', 'transferencia']);
 export const tipoParteEnum = pgEnum('tipo_parte', [
-  'empresa', 'obra', 'socio', 'empleado', 'proveedor', 'externo',
+  'empresa', 'obra', 'socio', 'empleado', 'proveedor', 'externo', 'cliente',
 ]);
 export const estadoMovimientoEnum = pgEnum('estado_movimiento', ['previsto', 'confirmado', 'anulado']);
 
@@ -181,7 +185,8 @@ export const parte = pgTable('parte', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   tipoActivoIdx: index('parte_tipo_activo_idx').on(t.tipo).where(sql`activo = true`),
-  obraUniqIdx: uniqueIndex('parte_obra_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL`),
+  obraUniqIdx: uniqueIndex('parte_obra_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL AND tipo = 'obra'`),
+  clienteUniqIdx: uniqueIndex('parte_cliente_uniq').on(t.obraId).where(sql`obra_id IS NOT NULL AND tipo = 'cliente'`),
   proveedorUniqIdx: uniqueIndex('parte_proveedor_uniq').on(t.proveedorId).where(sql`proveedor_id IS NOT NULL`),
 }));
 
