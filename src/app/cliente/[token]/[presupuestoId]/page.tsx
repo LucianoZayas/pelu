@@ -45,7 +45,20 @@ export default async function PresupuestoClientePage({
     );
   }
 
-  const totalCliente = D(p.totalClienteCalculado ?? '0');
+  // Subtotal de items (sin honorarios). El totalClienteCalculado del presupuesto
+  // se mantiene como referencia pero acá lo recalculamos para el desglose.
+  const subtotalItems = items.reduce(
+    (sum, row) => sum.plus(D(row.item.precioUnitarioCliente).times(row.item.cantidad)),
+    D(0),
+  );
+  // Honorarios profesionales: cada item puede tener override (porcentajeHonorarios)
+  // o usa el default de la obra (porcentajeHonorarios). Sumamos por item.
+  const totalHonorarios = items.reduce((sum, row) => {
+    const subtotalItem = D(row.item.precioUnitarioCliente).times(row.item.cantidad);
+    const porcentaje = D(row.item.porcentajeHonorarios ?? obra.porcentajeHonorarios);
+    return sum.plus(subtotalItem.times(porcentaje).div(100));
+  }, D(0));
+  const totalCliente = subtotalItems.plus(totalHonorarios);
 
   return (
     <article>
@@ -135,16 +148,25 @@ export default async function PresupuestoClientePage({
         </table>
       </div>
 
-      {/* Total destacado */}
+      {/* Desglose: subtotal + honorarios + total */}
       <div className="mb-8 flex justify-end">
-        <div className="rounded-xl border bg-white px-6 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] text-right">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70 mb-1">
-            Total {obra.monedaBase}
-          </p>
-          <p className="font-mono text-[28px] font-bold tracking-tight text-foreground">
-            {totalCliente.toFixed(2)}
-          </p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{obra.monedaBase}</p>
+        <div className="rounded-xl border bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_1px_3px_rgba(16,24,40,0.06)] overflow-hidden min-w-[320px]">
+          <div className="px-6 py-3 flex justify-between border-b text-[13px]">
+            <span className="text-muted-foreground">Subtotal items</span>
+            <span className="font-mono">{subtotalItems.toFixed(2)} {obra.monedaBase}</span>
+          </div>
+          <div className="px-6 py-3 flex justify-between border-b text-[13px]">
+            <span className="text-muted-foreground">Honorarios profesionales</span>
+            <span className="font-mono">{totalHonorarios.toFixed(2)} {obra.monedaBase}</span>
+          </div>
+          <div className="px-6 py-4 flex justify-between items-baseline bg-secondary/30">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+              Total {obra.monedaBase}
+            </span>
+            <span className="font-mono text-[24px] font-bold tracking-tight text-foreground">
+              {totalCliente.toFixed(2)}
+            </span>
+          </div>
         </div>
       </div>
 
