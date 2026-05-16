@@ -160,7 +160,25 @@ El schema tiene `Presupuesto.tipo IN ('original', 'adicional')` y la spec dice q
 
 Si hay gap: completar el flujo. Si está bien: cerrar este ítem.
 
-### 2.4 Certificaciones de avance **[P1 · F2]**
+### 2.4 Certificaciones de avance **[P1 · F2 · ✅ MVP hecho 2026-05-15 en branch feat/certificaciones-avances]**
+
+Sistema completo de certificaciones de avance con vista cliente diferenciada:
+
+- Modelo: tabla `certificacion` (numero auto por presupuesto, estados borrador/emitida/cobrada/anulada, totales neto/honorarios/general en moneda base) + tabla `avance_item` (porcentaje_acumulado, porcentaje_anterior, montos snapshot, porcentaje_honorarios_aplicado).
+- Override de % honorarios **por item** (`item_presupuesto.porcentaje_honorarios`), permite "albañilería 16%, pintura 3%, materiales 2%". Default: `obra.porcentaje_honorarios`.
+- Cliente auto-agregado como `parte` tipo='cliente' al firmar primer presupuesto (parte espejo por obra). Sincronizado en editarObra si cambia clienteNombre.
+- UI admin: `/obras/[id]/certificaciones` lista + detalle con AvanceEditor (tabla editable de items con preview en vivo) + CertActionsBar (Emitir/Cobrar/Anular).
+- Al marcar cobrada → **2 movimientos linkeados automáticos**: cobro neto (concepto COBRO_CERTIFICACION) + honorarios (concepto HO). Ambos con certificacion_id para anulación conjunta.
+- Vista cliente: `/cliente/[token]` muestra certificaciones emitidas/cobradas. Detalle del presupuesto y de la certificación con desglose: subtotal items + línea honorarios profesionales + total general. Cliente no ve los porcentajes por item.
+
+Migrations 0004 (cliente enum + porcentaje_honorarios) + 0005 (tablas certificacion/avance_item + FK movimiento.certificacion_id). 23 tests unit nuevos (149/149 verde).
+
+Pendiente (follow-ups menores):
+- Editar % honorarios por item desde el editor de presupuesto admin (hoy solo se setea via DB / actualización futura del form).
+- PDF firmable de certificación.
+- Permitir certificación que combine original + adicional.
+
+### 2.4bis Certificaciones de avance — diseño original **[archivo]**
 
 **Qué hace el Excel**: no se vio directamente en las hojas inspeccionadas pero la spec lo lista en F2. Es estándar en construcción: cada mes se "certifica" un porcentaje de avance por rubro/ítem para facturar al cliente.
 
