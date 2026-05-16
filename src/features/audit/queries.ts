@@ -2,14 +2,55 @@ import { and, desc, eq, gte, lte, SQL } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { auditLog, usuario } from '@/db/schema';
 
+type EntidadAudit = typeof auditLog.$inferSelect['entidad'];
+type AccionAudit = typeof auditLog.$inferSelect['accion'];
+
 export interface BuscarFiltros {
-  entidad?: 'obra' | 'presupuesto' | 'item_presupuesto' | 'usuario' | 'cliente_token' | 'rubro';
-  accion?: 'crear' | 'editar' | 'eliminar' | 'firmar' | 'cancelar' | 'regenerar_token';
+  entidad?: EntidadAudit;
+  accion?: AccionAudit;
   usuarioId?: string;
   desde?: Date;
   hasta?: Date;
   limit?: number;
   offset?: number;
+}
+
+export type AuditLogRow = {
+  id: string;
+  entidad: EntidadAudit;
+  entidadId: string;
+  accion: AccionAudit;
+  diff: unknown;
+  descripcionHumana: string | null;
+  usuarioId: string;
+  usuarioNombre: string | null;
+  usuarioEmail: string | null;
+  timestamp: Date;
+};
+
+export async function listarAuditDeEntidad(
+  entidad: EntidadAudit,
+  entidadId: string,
+): Promise<AuditLogRow[]> {
+  const rows = await db
+    .select({
+      id: auditLog.id,
+      entidad: auditLog.entidad,
+      entidadId: auditLog.entidadId,
+      accion: auditLog.accion,
+      diff: auditLog.diff,
+      descripcionHumana: auditLog.descripcionHumana,
+      usuarioId: auditLog.usuarioId,
+      usuarioNombre: usuario.nombre,
+      usuarioEmail: usuario.email,
+      timestamp: auditLog.timestamp,
+    })
+    .from(auditLog)
+    .leftJoin(usuario, eq(usuario.id, auditLog.usuarioId))
+    .where(and(eq(auditLog.entidad, entidad), eq(auditLog.entidadId, entidadId)))
+    .orderBy(desc(auditLog.timestamp));
+
+  return rows as AuditLogRow[];
 }
 
 export async function buscarLogs(f: BuscarFiltros) {

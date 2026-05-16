@@ -168,3 +168,64 @@ export async function obtenerMovimiento(id: string) {
   const [row] = await db.select().from(movimiento).where(eq(movimiento.id, id));
   return row ?? null;
 }
+
+// Versión con joins para mostrar el movimiento con todos sus nombres relacionados.
+// Misma forma que listarMovimientos pero filtrando a un único id.
+export async function obtenerMovimientoDetallado(id: string): Promise<MovimientoRow | null> {
+  const cuentaDestino = alias(cuenta, 'cuenta_destino');
+  const parteOrigen = alias(parte, 'parte_origen');
+  const parteDestino = alias(parte, 'parte_destino');
+
+  const result = await db
+    .select({
+      id: movimiento.id,
+      tipo: movimiento.tipo,
+      fecha: movimiento.fecha,
+      descripcion: movimiento.descripcion,
+      numeroComprobante: movimiento.numeroComprobante,
+      comprobanteUrl: movimiento.comprobanteUrl,
+      monto: movimiento.monto,
+      moneda: movimiento.moneda,
+      montoDestino: movimiento.montoDestino,
+      cotizacionUsd: movimiento.cotizacionUsd,
+      esNoRecuperable: movimiento.esNoRecuperable,
+      estado: movimiento.estado,
+      anuladoMotivo: movimiento.anuladoMotivo,
+      version: movimiento.version,
+      conceptoId: movimiento.conceptoId,
+      conceptoCodigo: conceptoMovimiento.codigo,
+      conceptoNombre: conceptoMovimiento.nombre,
+      conceptoTipo: conceptoMovimiento.tipo,
+      cuentaId: movimiento.cuentaId,
+      cuentaNombre: cuenta.nombre,
+      cuentaMoneda: cuenta.moneda,
+      cuentaDestinoId: movimiento.cuentaDestinoId,
+      cuentaDestinoNombre: cuentaDestino.nombre,
+      cuentaDestinoMoneda: cuentaDestino.moneda,
+      obraId: movimiento.obraId,
+      obraCodigo: obra.codigo,
+      obraNombre: obra.nombre,
+      parteOrigenId: movimiento.parteOrigenId,
+      parteOrigenNombre: parteOrigen.nombre,
+      parteDestinoId: movimiento.parteDestinoId,
+      parteDestinoNombre: parteDestino.nombre,
+      proveedorId: movimiento.proveedorId,
+      proveedorNombre: proveedor.nombre,
+      createdBy: movimiento.createdBy,
+      createdByNombre: usuario.nombre,
+      createdAt: movimiento.createdAt,
+    })
+    .from(movimiento)
+    .leftJoin(conceptoMovimiento, eq(conceptoMovimiento.id, movimiento.conceptoId))
+    .leftJoin(cuenta, eq(cuenta.id, movimiento.cuentaId))
+    .leftJoin(cuentaDestino, eq(cuentaDestino.id, movimiento.cuentaDestinoId))
+    .leftJoin(obra, eq(obra.id, movimiento.obraId))
+    .leftJoin(parteOrigen, eq(parteOrigen.id, movimiento.parteOrigenId))
+    .leftJoin(parteDestino, eq(parteDestino.id, movimiento.parteDestinoId))
+    .leftJoin(proveedor, eq(proveedor.id, movimiento.proveedorId))
+    .leftJoin(usuario, eq(usuario.id, movimiento.createdBy))
+    .where(eq(movimiento.id, id))
+    .limit(1);
+
+  return (result[0] as MovimientoRow | undefined) ?? null;
+}
