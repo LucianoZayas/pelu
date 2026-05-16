@@ -46,6 +46,12 @@ async function main() {
   const idMatch = html.match(/\/obras\/([0-9a-f-]{36})/);
   const obraId = idMatch?.[1];
 
+  // Buscar también un movimiento_id si existe alguno cargado
+  const movRes = await fetch(`${BASE}/movimientos`, { headers: { cookie: cookieHeader }, redirect: 'manual' });
+  const movHtml = await movRes.text();
+  const movIdMatch = movHtml.match(/\/movimientos\/([0-9a-f-]{36})/);
+  const movimientoId = movIdMatch?.[1];
+
   const rutas = [
     '/obras',
     '/flujo',
@@ -57,10 +63,12 @@ async function main() {
     '/configuracion/cuentas',
     '/configuracion/conceptos',
     '/configuracion/partes',
+    '/configuracion/proveedores',
     '/configuracion/rubros',
     '/configuracion/usuarios',
     '/configuracion/auditoria',
-    ...(obraId ? [`/obras/${obraId}`, `/obras/${obraId}/flujo`] : []),
+    ...(obraId ? [`/obras/${obraId}`, `/obras/${obraId}/flujo`, `/movimientos/nuevo?obra=${obraId}`] : []),
+    ...(movimientoId ? [`/movimientos/${movimientoId}`, `/movimientos/${movimientoId}/editar`] : []),
   ];
 
   const errores: Array<{ ruta: string; status: number; ms: number; tipo: string }> = [];

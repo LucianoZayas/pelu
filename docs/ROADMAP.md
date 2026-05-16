@@ -134,19 +134,21 @@ Lo que **Macna ya hace en Sheets pero el sistema todavía no cubre**. Identifica
 - Vistas: `/movimientos` con saldos + filtros URL, `/obras/[id]/flujo` con resumen ingresos/egresos/saldo neto USD+ARS, `/flujo/empresa` con movimientos sin obra.
 - Sidebar extendido. Audit log en cada server action.
 
-**Iteración UX 2026-05-15 PM** (✅ hecha en branch `feat/flujo-caja`):
+**Iteración UX 2026-05-15 PM** (✅ hecha en branch `feat/flujo-caja`, mergeada a main):
 - /movimientos y /flujo/empresa eran redundantes → eliminado /flujo/empresa, filtro 'Sin obra' en /movimientos.
 - /flujo ahora es un dashboard interactivo (KPIs período, saldos detalle, gráfico recharts ARS/USD, breakdown top 5 conceptos, actividad reciente) con PeriodoSelector (Mes/Mes pasado/Últimos 30/Año/personalizado).
 - /movimientos/nuevo: form lineal reemplazado por stepper de 3 pasos (Tipo → Datos → Detalles) con preview en vivo lateral, búsqueda searchable de concepto, atajos teclado.
 
-**Quedó out-of-scope del MVP (sub-tareas futuras)**:
-- **Upload de comprobantes a Supabase Storage**: campo `comprobante_url` existe pero sin UI de upload. Necesita: bucket `comprobantes` privado, policy de Storage, signed URLs, componente `<ComprobanteUpload>`.
-- **Auto-creación de `parte` tipo obra al crear obra**: hoy el form de movimiento usa `obra_id` directo. Si se quiere filtrar movimientos por "parte origen = obra X", hace falta que cada obra tenga su `parte` espejo. Trigger Postgres o hook en `crearObra` action.
-- **Auto-creación de `parte` tipo proveedor**: idem, al crear proveedor. Y crear ABM `/configuracion/proveedores` (hoy se pueden crear solo desde script o vía SQL).
-- **Tests unit + integration + E2E**: ninguno escrito para movimientos. Casos críticos a cubrir: validación zod por tipo, cálculo de saldos, transferencia balanceada, optimistic lock, permisos operador.
-- **Edición de movimiento existente desde UI**: action `editarMovimiento` existe pero no hay form de edición (solo crear). Reutilizar `MovimientoFormStepper` con valores prellenados + version expected.
-- **Detalle del movimiento (drawer/modal)** con audit log inline.
-- **Dashboard: alertas + resumen top 5 obras**: se postergaron en la iteración UX 2026-05-15. Agregar cuentas en negativo, gastos no recuperables del mes, obras con más actividad.
+**Iteración follow-ups 2026-05-15 PM v3** (✅ hecha en branch `feat/flujo-caja-followups`):
+- Auto-creación de `parte` espejo al crear/editar obra y proveedor (hook + backfill idempotente desde seed).
+- ABM `/configuracion/proveedores` con CRUD completo (nombre, cuit, contacto, esContratista, activo).
+- Dashboard widgets nuevos: AlertasPanel (cuentas en negativo + gastos no recuperables del período) + TopObras (top 5 con más movimientos).
+- Form de edición de movimiento (`/movimientos/[id]/editar`) reusando MovimientoFormStepper con valores prellenados + optimistic lock.
+- Página de detalle (`/movimientos/[id]`) con tarjeta completa + sidebar de audit log timeline.
+- 42 tests unit nuevos (126/126 verde): movimientos-schema, cuentas-schema, format helpers.
+
+**Único pendiente del flujo de caja MVP**:
+- **Upload de comprobantes a Supabase Storage**: campo `comprobante_url` existe pero sin UI de upload. Necesita: bucket `comprobantes` privado en Supabase (acción manual del usuario), policies de Storage, signed URLs, componente `<ComprobanteUpload>`. Ver SETUP_PENDIENTE §9bis.
 
 ### 2.2bis Bug histórico Excel ORIGEN
 
